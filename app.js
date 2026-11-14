@@ -646,8 +646,8 @@ function naviComment(q) {
   return 'AとB、それぞれ割合を出してから比べよう。';
 }
 function explainFor(q) {
-  const d = decText(q.P);
   if (q.mode === 'm1') {
+    const d = decText(q.P);
     return {
       main: '割合 ＝ 比べる量 ÷ もとにする量 だから、' + q.comp + ' ÷ ' + q.base + ' ＝ ' + d + ' です。％で表すと ' + q.P + '% です。',
       check: d + ' × ' + q.base + ' ＝ ' + q.comp + '（割合 × もとにする量 ＝ 比べる量）',
@@ -655,6 +655,7 @@ function explainFor(q) {
     };
   }
   if (q.mode === 'm2') {
+    const d = decText(q.P);
     return {
       main: '比べる量 ＝ もとにする量 × 割合 だから、' + q.base + ' × ' + d + ' ＝ ' + q.comp + ' です。',
       check: q.comp + ' ÷ ' + q.base + ' ＝ ' + d + '（確かめ：比べる量 ÷ もとにする量 ＝ 割合）',
@@ -662,6 +663,7 @@ function explainFor(q) {
     };
   }
   if (q.mode === 'm3') {
+    const d = decText(q.P);
     return {
       main: 'もとにする量 ＝ 比べる量 ÷ 割合 だから、' + q.comp + ' ÷ ' + d + ' ＝ ' + q.base + ' です。',
       check: d + ' × ' + q.base + ' ＝ ' + q.comp + '（割合 × もとにする量 ＝ 比べる量）',

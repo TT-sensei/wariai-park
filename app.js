@@ -231,7 +231,8 @@ const M1_BIG = [
   { base: 100, comp: 120, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の米の収穫量は {B}kgでした。今年は {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' },
   { base: 80, comp: 100, unit: 'cm', baseName: '先月の高さ', compName: '今月の高さ', text: '植物の高さは、先月は {B}cmでした。今月は {C}cmになりました。今月の高さは、先月のどれだけの割合ですか。' },
   { base: 50, comp: 60,  unit: 'こ', baseName: '1日の目標の数', compName: '作れた数', text: '折り紙の1日の目標は {B}こです。今日は {C}こ作れました。作れた数は、目標のどれだけの割合ですか。' },
-  { base: 200, comp: 300, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: 'お祭りの来場者は、去年は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' }
+  { base: 200, comp: 300, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: 'お祭りの来場者は、去年は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' },
+  { base: 100, comp: 100, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の米の収穫量は {B}kgでした。今年も {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' }
 ];
 function fillText(t, b, c) { return t.replace('{B}', b).replace('{C}', c); }
 function genM1() {
@@ -249,7 +250,7 @@ function genM1() {
 }
 // ---- モード2・3 共通の組み合わせ ----
 const M23_BASES = [20, 24, 40, 50, 60, 80, 100, 120, 150, 200, 240, 300, 400];
-const M23_PS = [20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 120, 150];
+const M23_PS = [20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 120, 150];
 const M23_SCENES = [
   {
     unit: '人',
@@ -328,10 +329,10 @@ function makeThreeChoices(correct, candidates) {
 function genM4() {
   const kinds = shuffle(['d2p', 'p2d', 'w2p', 'd2w', 'd2p', 'p2d', 'w2p', 'd2w']);
   const pools = {
-    d2p: shuffle([35, 8, 120, 45, 3, 65, 90, 125]),
-    p2d: shuffle([45, 120, 6, 70, 35, 250, 90, 15]),
-    w2p: shuffle([35, 70, 5, 45, 120, 25, 80, 15]),
-    d2w: shuffle([70, 45, 120, 5, 35, 90, 25, 60])
+    d2p: shuffle([35, 8, 100, 120, 45, 3, 65, 90, 125]),
+    p2d: shuffle([45, 100, 120, 6, 70, 35, 250, 90, 15]),
+    w2p: shuffle([35, 70, 5, 45, 100, 120, 25, 80, 15]),
+    d2w: shuffle([70, 45, 100, 120, 5, 35, 90, 25, 60])
   };
   const used = { d2p: 0, p2d: 0, w2p: 0, d2w: 0 };
   return kinds.map((kind) => {
@@ -386,7 +387,11 @@ const M5_BANK = [
     A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' }
 ];
 function genM5() {
-  return shuffle(M5_BANK).slice(0, 5).map((it) => {
+  // 5問の中に「実際の数と割合で結果が逆になる場面」を必ず1問入れる
+  const contrast = M5_BANK.filter((it) => ['attendance', 'target', 'book'].includes(it.id));
+  const seed = contrast[Math.floor(Math.random() * contrast.length)];
+  const chosen = [seed, ...shuffle(M5_BANK.filter((it) => it.id !== seed.id)).slice(0, 4)];
+  return shuffle(chosen).map((it) => {
     const A = Object.assign({}, it.A, { P: (it.A.comp * 100) / it.A.base });
     const B = Object.assign({}, it.B, { P: (it.B.comp * 100) / it.B.base });
     return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger, countBigger: it.A.comp > it.B.comp ? 'A' : 'B' };

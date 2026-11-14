@@ -50,9 +50,10 @@ const MODES = {
   m2: { id: 'm2', title: 'くらべる量を もとめる', navi: 'riku', color: 'var(--m2)', desc: '割合をかけると、比べる量が分かるよ（5問）' },
   m3: { id: 'm3', title: 'もとにする量を もとめる', navi: 'kai', color: 'var(--m3)', desc: '比べる量と割合から、全体をさかのぼろう（5問）' },
   m4: { id: 'm4', title: 'よみかえ', navi: 'tsuki', color: 'var(--m4)', desc: '小数・％・歩合を読み替えよう（8問）' },
-  m5: { id: 'm5', title: 'くらべる', navi: 'nami', color: 'var(--m5)', desc: 'AとB、どちらの割合が大きいかな（5問）' }
+  m5: { id: 'm5', title: 'くらべる', navi: 'nami', color: 'var(--m5)', desc: 'AとB、どちらの割合が大きいかな（5問）' },
+  m6: { id: 'm6', title: '3つの用法ミックス', navi: 'saku', color: 'var(--m6, #6476b8)', desc: '何を求める問題か、自分で見分けて解こう（6問）' }
 };
-const MODE_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5'];
+const MODE_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
 
 // ================= 保存 =================
 const LS_MISTAKES = 'wariaiPark.mistakes.v1';
@@ -75,9 +76,16 @@ let stats = loadJSON(LS_STATS, null);
 if (!stats || typeof stats !== 'object') {
   stats = { modes: {}, totalCorrect: 0, tokkonClearedTotal: 0 };
 }
+if (!stats.modes || typeof stats.modes !== 'object' || Array.isArray(stats.modes)) stats.modes = {};
 for (const m of MODE_ORDER) {
-  if (!stats.modes[m]) stats.modes[m] = { played: 0, answered: 0, correct: 0, cleared: false };
+  if (!stats.modes[m]) stats.modes[m] = { played: 0, answered: 0, correct: 0, mastered: false };
+  if (typeof stats.modes[m].mastered !== 'boolean') stats.modes[m].mastered = false;
+  if (!Number.isFinite(stats.modes[m].played)) stats.modes[m].played = 0;
+  if (!Number.isFinite(stats.modes[m].answered)) stats.modes[m].answered = 0;
+  if (!Number.isFinite(stats.modes[m].correct)) stats.modes[m].correct = 0;
 }
+if (!Number.isFinite(stats.totalCorrect)) stats.totalCorrect = 0;
+if (!Number.isFinite(stats.tokkonClearedTotal)) stats.tokkonClearedTotal = 0;
 let settings = loadJSON(LS_SETTINGS, { sound: true });
 if (typeof settings.sound !== 'boolean') settings.sound = true;
 
@@ -162,6 +170,7 @@ function numLineSVG(o) {
   const headPts = dir > 0
     ? `${ax2},${midY} ${ax2 - 11},${midY - 6} ${ax2 - 11},${midY + 6}`
     : `${ax2},${midY} ${ax2 + 11},${midY - 6} ${ax2 + 11},${midY + 6}`;
+  const suppressRelation = !!o.suppressRelation;
   const rateBottom = o.hide === 'rate' ? '？' : decText(o.P);
   const compTop = o.hide === 'comp' ? '？' : (o.comp + o.unit);
   const baseTop = o.hide === 'base' ? '？' : (o.base + o.unit);
@@ -172,7 +181,7 @@ function numLineSVG(o) {
   // ガイド（対応する位置を結ぶ破線）
   s += `<line x1="${x0}" y1="${topY}" x2="${x0}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   s += `<line x1="${x1}" y1="${topY - 16}" x2="${x1}" y2="${botY}" stroke="#7fc4b8" stroke-width="1.5" stroke-dasharray="3 4"/>`;
-  s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  if (!suppressRelation) s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   // 2本の線
   s += `<line x1="${L - 8}" y1="${topY}" x2="${R + 8}" y2="${topY}" stroke="#8a8172" stroke-width="2.5"/>`;
   s += `<line x1="${L - 8}" y1="${botY}" x2="${R + 8}" y2="${botY}" stroke="#8a8172" stroke-width="2.5"/>`;
@@ -180,21 +189,23 @@ function numLineSVG(o) {
   s += `<text x="8" y="${botY + 5}" font-size="13" fill="#8a8172" font-weight="700">割合</text>`;
   // 目盛り
   const tick = (x, big) => `<line x1="${x}" y1="${topY - 5}" x2="${x}" y2="${topY + 5}" stroke="#8a8172" stroke-width="2"/><line x1="${x}" y1="${botY - 5}" x2="${x}" y2="${botY + 5}" stroke="#8a8172" stroke-width="2"/>`;
-  s += tick(x0); s += tick(x1); s += tick(xr);
+  s += tick(x0); s += tick(x1); if (!suppressRelation) s += tick(xr);
   // 上段ラベル（量）
   s += `<text x="${x0}" y="${topY - 12}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
   s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#0a6b5e" text-anchor="middle" font-weight="700">もとにする量</text>`;
   s += `<text x="${x1}" y="${topY - 10}" font-size="16.5" fill="#33302b" text-anchor="middle" font-weight="800">${esc(baseTop)}</text>`;
-  s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
+  if (!suppressRelation) s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
   // 下段ラベル（割合）
   s += `<text x="${x0}" y="${botY + 20}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
   s += `<circle cx="${x1}" cy="${botY + 14}" r="13.5" fill="#e2f4f0" stroke="#0e8a7a" stroke-width="2.5"/>`;
   s += `<text x="${x1}" y="${botY + 20}" font-size="17" fill="#0a6b5e" text-anchor="middle" font-weight="800">1</text>`;
-  s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
+  if (!suppressRelation) s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
   // 矢印（1 の位置から比べる量の位置へ伸びる）
-  s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
-  s += `<polygon class="nl-head" points="${headPts}" fill="#0e8a7a"/>`;
-  s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#0e8a7a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
+  if (!suppressRelation) {
+    s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<polygon class="nl-head" points="${headPts}" fill="#0e8a7a"/>`;
+    s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#0e8a7a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
+  }
   s += '</svg>';
   return s;
 }
@@ -220,7 +231,8 @@ const M1_BIG = [
   { base: 100, comp: 120, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の米の収穫量は {B}kgでした。今年は {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' },
   { base: 80, comp: 100, unit: 'cm', baseName: '先月の高さ', compName: '今月の高さ', text: '植物の高さは、先月は {B}cmでした。今月は {C}cmになりました。今月の高さは、先月のどれだけの割合ですか。' },
   { base: 50, comp: 60,  unit: 'こ', baseName: '1日の目標の数', compName: '作れた数', text: '折り紙の1日の目標は {B}こです。今日は {C}こ作れました。作れた数は、目標のどれだけの割合ですか。' },
-  { base: 200, comp: 300, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: 'お祭りの来場者は、去年は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' }
+  { base: 200, comp: 300, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: 'お祭りの来場者は、去年は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' },
+  { base: 100, comp: 100, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の米の収穫量は {B}kgでした。今年も {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' }
 ];
 function fillText(t, b, c) { return t.replace('{B}', b).replace('{C}', c); }
 function genM1() {
@@ -238,14 +250,33 @@ function genM1() {
 }
 // ---- モード2・3 共通の組み合わせ ----
 const M23_BASES = [20, 24, 40, 50, 60, 80, 100, 120, 150, 200, 240, 300, 400];
-const M23_PS = [20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 120, 150];
+const M23_PS = [20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 120, 150];
 const M23_SCENES = [
-  { unit: '人', thing: 'バスの定員', verb: '乗る' },
-  { unit: 'g', thing: 'さとうの重さ', verb: '使う' },
-  { unit: 'm', thing: 'リボンの長さ', verb: '使う' },
-  { unit: '円', thing: 'ねだん', verb: '安く なる' },
-  { unit: 'ページ', thing: '本のページ数', verb: '読む' },
-  { unit: 'mL', thing: 'ジュースの量', verb: '飲む' }
+  {
+    unit: '人',
+    m2: (b, r) => '去年のお祭りの来場者は ' + b + '人でした。今年は去年の ' + r + ' です。今年の来場者は何人ですか。',
+    m3: (c, r) => '今年のお祭りの来場者は ' + c + '人で、去年の来場者数の ' + r + ' です。去年は何人でしたか。'
+  },
+  {
+    unit: 'kg',
+    m2: (b, r) => '去年の米の収穫量は ' + b + 'kgでした。今年は去年の ' + r + ' です。今年の収穫量は何kgですか。',
+    m3: (c, r) => '今年の米の収穫量は ' + c + 'kgで、去年の収穫量の ' + r + ' です。去年は何kgでしたか。'
+  },
+  {
+    unit: 'こ',
+    m2: (b, r) => '工作の目標は ' + b + 'こです。できた数は目標の ' + r + ' でした。できた数は何こですか。',
+    m3: (c, r) => '工作で ' + c + 'こできました。これは目標の ' + r + ' です。目標は何こでしたか。'
+  },
+  {
+    unit: '万円',
+    m2: (b, r) => '先月の売上は ' + b + '万円でした。今月は先月の ' + r + ' です。今月の売上は何万円ですか。',
+    m3: (c, r) => '今月の売上は ' + c + '万円で、先月の売上の ' + r + ' です。先月は何万円でしたか。'
+  },
+  {
+    unit: 'ページ',
+    m2: (b, r) => '先月に読んだページ数は ' + b + 'ページでした。今月は先月の ' + r + ' です。今月は何ページ読みましたか。',
+    m3: (c, r) => '今月に読んだページ数は ' + c + 'ページで、先月の ' + r + ' です。先月は何ページ読みましたか。'
+  }
 ];
 function repOf(P, kind) {
   if (kind === 'pct') return { kind, text: P + '%', dec: decText(P) };
@@ -262,9 +293,9 @@ function genM2() {
     const sc = M23_SCENES[Math.floor(Math.random() * M23_SCENES.length)];
     const rep = repOf(c.P, kinds[i]);
     return {
-      mode: 'm2', key: `m2-${c.base}-${c.P}`,
+      mode: 'm2', key: 'm2-' + c.base + '-' + c.P,
       base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep,
-      text: `${sc.thing}は ${c.base}${sc.unit}です。その ${rep.text} の量は、何${sc.unit}ですか。`
+      text: sc.m2(c.base, rep.text)
     };
   });
 }
@@ -278,73 +309,105 @@ function genM3() {
     const sc = M23_SCENES[Math.floor(Math.random() * M23_SCENES.length)];
     const rep = repOf(c.P, kinds[i]);
     return {
-      mode: 'm3', key: `m3-${c.comp}-${c.P}`,
+      mode: 'm3', key: 'm3-' + c.comp + '-' + c.P,
       base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep,
-      text: `${c.comp}${sc.unit}は、全体（${sc.thing}）の ${rep.text} です。全体は 何${sc.unit}ですか。`
+      text: sc.m3(c.comp, rep.text)
     };
   });
 }
 // ---- モード4：読み替え ----
+function makeThreeChoices(correct, candidates) {
+  const labels = [String(correct)];
+  for (const candidate of candidates) {
+    const value = String(candidate);
+    if (!labels.includes(value)) labels.push(value);
+    if (labels.length === 3) break;
+  }
+  if (labels.length !== 3) throw new Error('読み替え問題の選択肢を3つ作れませんでした。');
+  return shuffle(labels.map((t, i) => ({ t, ok: i === 0 })));
+}
 function genM4() {
   const kinds = shuffle(['d2p', 'p2d', 'w2p', 'd2w', 'd2p', 'p2d', 'w2p', 'd2w']);
   const pools = {
-    d2p: [35, 8, 120, 45, 3, 65, 90, 125],
-    p2d: [45, 120, 6, 70, 35, 250, 90, 15],
-    w2p: [35, 70, 5, 45, 120, 25, 80, 15],
-    d2w: [70, 45, 120, 5, 35, 90, 25, 60]
+    d2p: shuffle([35, 8, 100, 120, 45, 3, 65, 90, 125]),
+    p2d: shuffle([45, 100, 120, 6, 70, 35, 250, 90, 15]),
+    w2p: shuffle([35, 70, 5, 45, 100, 120, 25, 80, 15]),
+    d2w: shuffle([70, 45, 100, 120, 5, 35, 90, 25, 60])
   };
   const used = { d2p: 0, p2d: 0, w2p: 0, d2w: 0 };
   return kinds.map((kind) => {
-    const pool = shuffle(pools[kind]);
-    const V = pool[used[kind]++ % pool.length];
-    let prompt, options, explain;
+    const V = pools[kind][used[kind]++];
+    let prompt, options, explain, hint;
     if (kind === 'd2p') {
-      prompt = `小数 ${decText(V)} は、何％ですか。`;
-      options = [V + '%', (V * 10) + '%', Math.max(1, Math.round(V / 10)) + '%'];
-      explain = `${decText(V)} は 100分の${V}。だから ${V}% です。割合を％で表すときは、100をかけます。`;
+      prompt = '小数 ' + decText(V) + ' は、何％ですか。';
+      options = makeThreeChoices(V + '%', [(V * 10) + '%', Math.max(1, Math.round(V / 10)) + '%']);
+      explain = decText(V) + ' は100分の' + V + '。だから ' + V + '% です。小数から％にするときは100倍します。';
+      hint = '1は100％。小数を％に直すときは、100倍することを思い出そう。';
     } else if (kind === 'p2d') {
-      prompt = `${V}％ は、小数ではいくつですか。`;
-      options = [decText(V), decText(V * 10), V >= 10 ? decText(Math.round(V / 10)) : '0.0' + V];
-      explain = `${V}% は 100分の${V}。小数では ${decText(V)} です。％を小数に直すときは、100でわります。`;
+      prompt = V + '％ は、小数ではいくつですか。';
+      options = makeThreeChoices(decText(V), [decText(V * 10), decText(Math.max(1, Math.round(V / 10)))]);
+      explain = V + '% は100分の' + V + '。小数では ' + decText(V) + ' です。％から小数にするときは100で割ります。';
+      hint = '％は「100分のいくつ」という意味。100で割って小数にしよう。';
     } else if (kind === 'w2p') {
-      prompt = `${wariText(V)} は、何％ですか。`;
-      options = [V + '%', (V + 10) + '%', Math.max(1, V - 10) + '%'];
-      explain = `1割は10%です。${wariText(V)} は ${V}% です。`;
+      prompt = wariText(V) + ' は、何％ですか。';
+      options = makeThreeChoices(V + '%', [(V + 10) + '%', Math.max(1, V - 10) + '%']);
+      explain = '1割は10％、1分は1％です。だから ' + wariText(V) + ' は ' + V + '% です。';
+      hint = '1割＝10％、1分＝1％。割と分を分けて考えよう。';
     } else {
-      prompt = `小数 ${decText(V)} は、歩合では何ですか。`;
-      options = [wariText(V), wariText(V + 10), V > 10 ? wariText(V - 10) : wariText(V + 20)];
-      explain = `${decText(V)} は ${V}% で、10%が1割だから ${wariText(V)} です。`;
+      prompt = '小数 ' + decText(V) + ' は、歩合では何ですか。';
+      options = makeThreeChoices(wariText(V), [wariText(V + 10), wariText(V > 10 ? V - 10 : V + 20)]);
+      explain = decText(V) + ' は ' + V + '% です。10％が1割、1％が1分なので ' + wariText(V) + ' です。';
+      hint = 'まず小数を％に直し、10％を1割、1％を1分として考えよう。';
     }
-    const opts = shuffle(options.map((t, i) => ({ t, ok: i === 0 })));
     return {
-      mode: 'm4', key: `m4-${kind}-${V}`, kind, V,
-      prompt, options: opts, explain
+      mode: 'm4', key: 'm4-' + kind + '-' + V, kind, V,
+      prompt, options, explain, hint
     };
   });
 }
 // ---- モード5：くらべる ----
 const M5_BANK = [
-  { id: 'juice', title: 'ジュースの こさ', ask: 'こいのは どちらですか。', aLabel: 'Aのジュース', bLabel: 'Bのジュース',
-    A: { base: 200, comp: 40, unit: 'g', text: '水200gに さとう40g' }, B: { base: 250, comp: 75, unit: 'g', text: '水250gに さとう75g' }, bigger: 'B' },
-  { id: 'shoot', title: 'シュートの 成功率', ask: '成功率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'juice', title: '砂糖水の こさ', askCount: '砂糖の重さが大きいのはどちらですか。', ask: '砂糖の割合が 大きいのは どちらですか。', aLabel: 'Aの砂糖水', bLabel: 'Bの砂糖水',
+    A: { base: 200, comp: 40, unit: 'g', text: '水160gに さとう40g（全体200g）' }, B: { base: 250, comp: 75, unit: 'g', text: '水175gに さとう75g（全体250g）' }, bigger: 'B' },
+  { id: 'shoot', title: 'シュートの 成功率', askCount: '成功した本数が多いのはどちらですか。', ask: '成功率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 20, comp: 12, unit: '本', text: '20本のうち 12本成功' }, B: { base: 25, comp: 10, unit: '本', text: '25本のうち 10本成功' }, bigger: 'A' },
-  { id: 'discount', title: '割引の お得さ', ask: 'お得なのは どちらですか。', aLabel: 'Aの店', bLabel: 'Bの店',
+  { id: 'discount', title: '割引率', askCount: '割引金額が大きいのはどちらですか。', ask: '割引率が 高いのは どちらですか。', aLabel: 'Aの店', bLabel: 'Bの店',
     A: { base: 1000, comp: 200, unit: '円', text: '1000円の品物が 200円引き' }, B: { base: 800, comp: 240, unit: '円', text: '800円の品物が 240円引き' }, bigger: 'B' },
-  { id: 'book', title: '本の 読み進み', ask: '読み進んだ割合が 大きいのは どちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
+  { id: 'book', title: '本の 読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が 大きいのは どちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
     A: { base: 150, comp: 90, unit: 'ページ', text: '150ページのうち 90ページ読んだ' }, B: { base: 200, comp: 100, unit: 'ページ', text: '200ページのうち 100ページ読んだ' }, bigger: 'A' },
-  { id: 'kuji', title: 'くじの あたり率', ask: 'あたり率が 高いのは どちらですか。', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
+  { id: 'kuji', title: 'くじの あたり率', askCount: '当たりくじの本数が多いのはどちらですか。', ask: 'あたり率が 高いのは どちらですか。', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
     A: { base: 40, comp: 8, unit: '本', text: '40本のうち あたり8本' }, B: { base: 30, comp: 9, unit: '本', text: '30本のうち あたり9本' }, bigger: 'B' },
-  { id: 'test', title: 'テストの 取れた割合', ask: '取れた割合が 大きいのは どちらですか。', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
-    A: { base: 50, comp: 40, unit: '点', text: '50点満点で 40点' }, B: { base: 40, comp: 28, unit: '点', text: '40点満点で 28点' }, bigger: 'A' }
+  { id: 'test', title: 'テストの 取れた割合', askCount: '取れた点数が多いのはどちらですか。', ask: '取れた割合が 大きいのは どちらですか。', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
+    A: { base: 50, comp: 40, unit: '点', text: '50点満点で 40点' }, B: { base: 40, comp: 28, unit: '点', text: '40点満点で 28点' }, bigger: 'A' },
+  { id: 'attendance', title: '参加した割合', askCount: '参加した人数が多いのはどちらですか。', ask: '参加した割合が 大きいのは どちらですか。', aLabel: 'Aの学年', bLabel: 'Bの学年',
+    A: { base: 40, comp: 30, unit: '人', text: '40人のうち 30人が参加' }, B: { base: 30, comp: 24, unit: '人', text: '30人のうち 24人が参加' }, bigger: 'B' },
+  { id: 'target', title: '目標の達成率', askCount: '作れた数が多いのはどちらですか。', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+    A: { base: 40, comp: 36, unit: 'こ', text: '目標40こに対して 36こできた' }, B: { base: 50, comp: 40, unit: 'こ', text: '目標50こに対して 40こできた' }, bigger: 'A' },
+  { id: 'sales', title: '売上ののび', askCount: '今年の売上金額が大きいのはどちらですか。', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
+    A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' }
 ];
 function genM5() {
-  return shuffle(M5_BANK).slice(0, 5).map((it) => {
+  // 5問の中に「実際の数と割合で結果が逆になる場面」を必ず1問入れる
+  const contrast = M5_BANK.filter((it) => ['attendance', 'target', 'book'].includes(it.id));
+  const seed = contrast[Math.floor(Math.random() * contrast.length)];
+  const chosen = [seed, ...shuffle(M5_BANK.filter((it) => it.id !== seed.id)).slice(0, 4)];
+  return shuffle(chosen).map((it) => {
     const A = Object.assign({}, it.A, { P: (it.A.comp * 100) / it.A.base });
     const B = Object.assign({}, it.B, { P: (it.B.comp * 100) / it.B.base });
-    return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger };
+    return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger, countBigger: it.A.comp > it.B.comp ? 'A' : 'B' };
   });
 }
-const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5 };
+function genM6() {
+  const asMix = (source, target) => Object.assign({}, source, {
+    mode: 'm6', key: 'm6-' + target + '-' + source.key, target
+  });
+  return shuffle([
+    ...genM1().slice(0, 2).map(q => asMix(q, 'rate')),
+    ...genM2().slice(0, 2).map(q => asMix(q, 'comp')),
+    ...genM3().slice(0, 2).map(q => asMix(q, 'base'))
+  ]);
+}
+const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5, m6: genM6 };
 
 // ================= ステップ構築 =================
 function choiceStep(prompt, pairs, hint) {
@@ -359,58 +422,101 @@ function buildSteps(q) {
     return [
       choiceStep('まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
         [[`${q.baseName}（${q.base}${q.unit}）`, true], [`${q.compName}（${q.comp}${q.unit}）`, false]],
-        '割合は、「全体や もとになる量」を1とみて考えるよ。'),
+        '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。'),
+      choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+        [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+        '下の数直線の「1」を基準に、比べる量の印の位置を予想しよう。'),
       choiceStep('割合を求める式は、どちらかな？',
         [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false]],
-        '割合 ＝ 比べる量 ÷ もとにする量 だよ。わる順番に気をつけよう。'),
+        '「比べる量」を「もとにする量」で割る順番だよ。二重数直線の下の段も見てみよう。'),
       inputStep('割合を、小数で入力しよう。', q.P, decText(q.P),
-        '式の答えを、小数で書いてね。')
+        '割合は、もとにする量を1とみたときの大きさ。1より小さいか、大きいかも確かめよう。')
     ];
   }
   if (q.mode === 'm2') {
     const d = decText(q.P);
     return [
+      choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+        [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+        '割合が1より小さいなら左側、1より大きいなら右側。図の「1」を基準にしよう。'),
       choiceStep('比べる量を求める式は、どれかな？',
         [[`${q.base} × ${d}`, true], [`${q.base} ÷ ${d}`, false], [`${d} ÷ ${q.base}`, false]],
-        '二重数直線の矢印は「×割合」。比べる量 ＝ もとにする量 × 割合 だよ。'),
+        'もとにする量を1とみると、比べる量はその何倍かな。矢印の「×割合」に注目しよう。'),
       inputStep(`比べる量は、何${q.unit}ですか。`, q.comp * 100, String(q.comp),
-        'かけ算の答えを入力してね。')
+        '割合をかけると、1より小さい割合ならもとの量より小さく、1より大きければ大きくなるよ。')
     ];
   }
   if (q.mode === 'm3') {
     const d = decText(q.P);
     return [
+      choiceStep('もとにする量の印は、比べる量の印と比べてどこにくるかな？',
+        [['左側', q.P > 100], ['同じ位置', q.P === 100], ['右側', q.P < 100]],
+        'もとにする量は「1」の位置。比べる量の印と、左右の位置関係を考えよう。'),
       choiceStep('もとにする量を求める式は、どれかな？',
         [[`${q.comp} ÷ ${d}`, true], [`${q.comp} × ${d}`, false], [`${d} ÷ ${q.comp}`, false]],
-        '比べる量 ÷ 割合 で、もとにする量にさかのぼれるよ。'),
+        'もとにする量 × 割合 ＝ 比べる量。□をもとにする量にして、式を逆にたどろう。'),
       inputStep(`もとにする量は、何${q.unit}ですか。`, q.base * 100, String(q.base),
-        'わり算の答えを入力してね。')
+        '求めたいのは「1」にあたる量。比べる量を割合で割ると、もとにする量に戻れるよ。')
     ];
   }
   if (q.mode === 'm4') {
-    return [{ type: 'choice', prompt: '', hint: '', choices: q.options.map((o) => ({ label: o.t, ok: o.ok })), pickedWrong: [] }];
+    return [{ type: 'choice', prompt: '', hint: q.hint, choices: q.options.map((o) => ({ label: o.t, ok: o.ok })), pickedWrong: [] }];
+  }
+  if (q.mode === 'm6') {
+    const targetStep = choiceStep('この問題で、求めるものは何かな？',
+      [['割合', q.target === 'rate'], ['比べる量', q.target === 'comp'], ['もとにする量', q.target === 'base']],
+      '問題文の最後を読み、まだ分かっていない量に注目しよう。');
+    const relationStep = choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+      [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+      '下の数直線の「1」を基準に、比べる量の印の位置を予想しよう。');
+    const d = decText(q.P);
+    let formulaPairs, answer, prompt, hint;
+    if (q.target === 'rate') {
+      formulaPairs = [[q.comp + ' ÷ ' + q.base, true], [q.base + ' ÷ ' + q.comp, false], [q.comp + ' × ' + q.base, false]];
+      answer = q.P; prompt = '割合を小数で入力しよう。';
+      hint = '割合は、比べる量をもとにする量で割って求めるよ。';
+    } else if (q.target === 'comp') {
+      formulaPairs = [[q.base + ' × ' + d, true], [q.base + ' ÷ ' + d, false], [d + ' ÷ ' + q.base, false]];
+      answer = q.comp; prompt = '比べる量を' + q.unit + 'で入力しよう。';
+      hint = 'もとにする量を1とみたときの何倍かが割合。もとにする量に割合をかけよう。';
+    } else {
+      formulaPairs = [[q.comp + ' ÷ ' + d, true], [q.comp + ' × ' + d, false], [d + ' ÷ ' + q.comp, false]];
+      answer = q.base; prompt = 'もとにする量を' + q.unit + 'で入力しよう。';
+      hint = 'もとにする量は1にあたる量。比べる量を割合で割って戻そう。';
+    }
+    const formulaStep = choiceStep('関係を式に表すと、どれかな？', formulaPairs, hint);
+    const valueStep = inputStep(prompt, q.target === 'rate' ? q.P : answer * 100,
+      q.target === 'rate' ? decText(q.P) : String(answer),
+      '入力した答えを、もとの場面に戻して確かめよう。');
+    return [targetStep, relationStep, formulaStep, valueStep];
   }
   // m5
+  const rawCompare = choiceStep(q.askCount,
+    [[q.aLabel, q.countBigger === 'A'], [q.bLabel, q.countBigger === 'B']],
+    'まずは実際の数を比べるよ。このあと、もとにする量が違うときは割合でも比べてみよう。');
   const fA = choiceStep(`${q.aLabel} の割合を求める式は、どちらかな？`,
-    [[`${q.A.comp} ÷ ${q.A.base}`, true], [`${q.A.base} ÷ ${q.A.comp}`, false]], '割合 ＝ 比べる量 ÷ もとにする量 だよ。');
-  const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P), '');
+    [[`${q.A.comp} ÷ ${q.A.base}`, true], [`${q.A.base} ÷ ${q.A.comp}`, false]], 'まず、それぞれの「もとにする量」を見つけよう。分母にくる量を取り違えないでね。');
+  const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P),
+    'もとにする量を1とみたときの大きさを、小数で表そう。1より大きいか小さいかも確かめてね。');
   const fB = choiceStep(`${q.bLabel} の割合を求める式は、どちらかな？`,
-    [[`${q.B.comp} ÷ ${q.B.base}`, true], [`${q.B.base} ÷ ${q.B.comp}`, false]], '割合 ＝ 比べる量 ÷ もとにする量 だよ。');
-  const iB = inputStep(`${q.bLabel} の割合を、小数で入力しよう。`, q.B.P, decText(q.B.P), '');
+    [[`${q.B.comp} ÷ ${q.B.base}`, true], [`${q.B.base} ÷ ${q.B.comp}`, false]], 'Aと同じように「比べる量 ÷ もとにする量」。2つの式を同じ向きでそろえよう。');
+  const iB = inputStep(`${q.bLabel} の割合を、小数で入力しよう。`, q.B.P, decText(q.B.P),
+    'もとにする量を1とみたときの大きさを、小数で表そう。Aと同じ位取りでそろえてね。');
   const cmp = choiceStep(q.ask,
     [[q.aLabel, q.bigger === 'A'], [q.bLabel, q.bigger === 'B']],
-    `割合は、Aが ${decText(q.A.P)}、Bが ${decText(q.B.P)} だったね。`);
-  return [fA, iA, fB, iB, cmp];
+    '同じ1を基準にそろえて、割合を比べよう。量そのものの大きさだけで決めないことがポイントだよ。');
+  return [rawCompare, fA, iA, fB, iB, cmp];
 }
 
 // ================= バッジ =================
 const BADGES = [
-  { id: 'clear-m1', label: 'わりあいマスター', test: () => stats.modes.m1.cleared },
-  { id: 'clear-m2', label: 'くらべる量マスター', test: () => stats.modes.m2.cleared },
-  { id: 'clear-m3', label: 'もとにする量マスター', test: () => stats.modes.m3.cleared },
-  { id: 'clear-m4', label: 'よみかえマスター', test: () => stats.modes.m4.cleared },
-  { id: 'clear-m5', label: 'くらべるマスター', test: () => stats.modes.m5.cleared },
-  { id: 'clear-all', label: '全モードクリア', test: () => MODE_ORDER.every((m) => stats.modes[m].cleared) },
+  { id: 'clear-m1', label: 'わりあいマスター', test: () => stats.modes.m1.mastered },
+  { id: 'clear-m2', label: 'くらべる量マスター', test: () => stats.modes.m2.mastered },
+  { id: 'clear-m3', label: 'もとにする量マスター', test: () => stats.modes.m3.mastered },
+  { id: 'clear-m4', label: 'よみかえマスター', test: () => stats.modes.m4.mastered },
+  { id: 'clear-m5', label: 'くらべるマスター', test: () => stats.modes.m5.mastered },
+  { id: 'clear-m6', label: '3つの用法マスター', test: () => stats.modes.m6.mastered },
+  { id: 'clear-all', label: '全モードマスター', test: () => MODE_ORDER.every((m) => stats.modes[m].mastered) },
   { id: 'tokkon-1', label: 'とっくん克服 1件', test: () => stats.tokkonClearedTotal >= 1 },
   { id: 'tokkon-5', label: 'とっくん克服 5件', test: () => stats.tokkonClearedTotal >= 5 },
   { id: 'tokkon-10', label: 'とっくん克服 10件', test: () => stats.tokkonClearedTotal >= 10 },
@@ -425,6 +531,22 @@ let screen = 'home';           // home | solve | result | records
 let session = null;
 
 function startSession(mode, list) {
+  // 旧バージョンで保存されたM5の誤答記録を、現在の比較データへ更新する
+  if (mode === 'tokkon') {
+    list = list.map((q) => {
+      if (!q || q.mode !== 'm5' || !q.id) return q;
+      const current = M5_BANK.find((item) => item.id === q.id);
+      if (!current) return q;
+      const A = Object.assign({}, current.A, { P: (current.A.comp * 100) / current.A.base });
+      const B = Object.assign({}, current.B, { P: (current.B.comp * 100) / current.B.base });
+      return Object.assign({}, q, {
+        title: current.title, askCount: current.askCount, ask: current.ask,
+        aLabel: current.aLabel, bLabel: current.bLabel, A, B,
+        bigger: current.bigger,
+        countBigger: current.A.comp > current.B.comp ? 'A' : 'B'
+      });
+    });
+  }
   session = {
     mode,                       // 'm1'..'m5' | 'tokkon'
     list,
@@ -443,7 +565,7 @@ function startSession(mode, list) {
   setupQuestion();
   screen = 'solve';
   playSound('start');
-  render();
+  render(true);
 }
 function setupQuestion() {
   session.q = session.list[session.idx];
@@ -527,6 +649,11 @@ function confirmInput() {
   if (!session || session.phase !== 'steps') return;
   const step = currentStep();
   if (!step || step.type !== 'input') return;
+  if (!session.inputStr.trim()) {
+    session.miniMsg = { kind: 'notice', text: 'まずは数字を入力してから、答え合わせをしよう。' };
+    render();
+    return;
+  }
   playSound('decide');
   const v = parseInputHundredths(session.inputStr);
   if (v !== null && v === step.expectedH) {
@@ -545,13 +672,21 @@ function nextQuestion() {
   if (!session) return;
   if (session.idx + 1 >= session.list.length) {
     if (session.mode !== 'tokkon') {
-      stats.modes[session.mode].played += 1;
-      stats.modes[session.mode].cleared = true;
+      const required = Math.ceil(session.list.length * 0.8);
+      const passed = session.correctCount >= required;
+      const st = stats.modes[session.mode];
+      st.played += 1;
+      st.mastered = st.mastered || passed;
+      st.lastCorrect = session.correctCount;
+      st.lastTotal = session.list.length;
+      st.lastPassed = passed;
+      session.requiredCorrect = required;
+      session.passed = passed;
       saveAll();
     }
     screen = 'result';
     playSound('clear');
-    render();
+    render(true);
   } else {
     session.idx += 1;
     setupQuestion();
@@ -560,19 +695,20 @@ function nextQuestion() {
 }
 
 // ================= 図と解説 =================
-function figureFor(q, revealed) {
+function figureFor(q, revealState) {
   if (q.mode === 'm4') return '';
   if (q.mode === 'm5') {
-    const aDone = revealed || session.stepIdx >= 2;
-    const bDone = revealed || session.stepIdx >= 4;
+    const aDone = revealState === 2 || session.stepIdx >= 3;
+    const bDone = revealState === 2 || session.stepIdx >= 5;
     return `<div class="fig-box"><div class="fig-cap">${esc(q.aLabel)}</div>` +
-      numLineSVG({ base: q.A.base, comp: q.A.comp, P: q.A.P, unit: q.A.unit, hide: aDone ? null : 'rate', compact: true }) +
+      numLineSVG({ base: q.A.base, comp: q.A.comp, P: q.A.P, unit: q.A.unit, hide: aDone ? null : 'rate', suppressRelation: !aDone, compact: true }) +
       `<div class="fig-cap">${esc(q.bLabel)}</div>` +
-      numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', compact: true }) +
+      numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', suppressRelation: !bDone, compact: true }) +
       '</div>';
   }
-  const hide = revealed ? null : (q.mode === 'm1' ? 'rate' : q.mode === 'm2' ? 'comp' : 'base');
-  return `<div class="fig-box">` + numLineSVG({ base: q.base, comp: q.comp, P: q.P, unit: q.unit, hide }) + '</div>';
+  const hide = revealState === 2 ? null : (q.mode === 'm1' ? 'rate' : q.mode === 'm2' ? 'comp' : q.mode === 'm6' ? (q.target === 'rate' ? 'rate' : q.target === 'comp' ? 'comp' : 'base') : 'base');
+  const suppressRelation = revealState === 0;
+  return `<div class="fig-box">` + numLineSVG({ base: q.base, comp: q.comp, P: q.P, unit: q.unit, hide, suppressRelation }) + '</div>';
 }
 function questionText(q) {
   if (q.mode === 'm4') return q.prompt;
@@ -584,32 +720,67 @@ function naviComment(q) {
   if (q.mode === 'm2') return '矢印は「×割合」。1の位置から引っ張ってみよう。';
   if (q.mode === 'm3') return '比べる量から、わり算で さかのぼるよ。';
   if (q.mode === 'm4') return '小数も％も歩合も、もとは「100分のいくつ」だよ。';
+  if (q.mode === 'm6') return '何を求める問題かを見きわめて、3つの関係を使い分けよう。';
   return 'AとB、それぞれ割合を出してから比べよう。';
 }
 function explainFor(q) {
-  const d = decText(q.P);
   if (q.mode === 'm1') {
+    const d = decText(q.P);
     return {
-      main: `割合 ＝ 比べる量 ÷ もとにする量 だから、${q.comp} ÷ ${q.base} ＝ ${d} です。％で表すと ${q.P}% です。`,
-      check: `${d} × ${q.base} ＝ ${q.comp}（割合 × もとにする量 ＝ 比べる量）`
+      main: '割合 ＝ 比べる量 ÷ もとにする量 だから、' + q.comp + ' ÷ ' + q.base + ' ＝ ' + d + ' です。％で表すと ' + q.P + '% です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp + '（割合 × もとにする量 ＝ 比べる量）',
+      concept: 'この問題では「' + q.baseName + '」を1とみたよ。その中の「' + q.compName + '」がどれだけにあたるかを考えたんだね。'
     };
   }
   if (q.mode === 'm2') {
+    const d = decText(q.P);
     return {
-      main: `比べる量 ＝ もとにする量 × 割合 だから、${q.base} × ${d} ＝ ${q.comp} です。`,
-      check: `${q.comp} ÷ ${q.base} ＝ ${d}（確かめ：比べる量 ÷ もとにする量 ＝ 割合）`
+      main: '比べる量 ＝ もとにする量 × 割合 だから、' + q.base + ' × ' + d + ' ＝ ' + q.comp + ' です。',
+      check: q.comp + ' ÷ ' + q.base + ' ＝ ' + d + '（確かめ：比べる量 ÷ もとにする量 ＝ 割合）',
+      concept: '割合は「もとにする量を1としたときの何倍か」。だから、もとにする量に割合をかけると比べる量になるよ。'
     };
   }
   if (q.mode === 'm3') {
+    const d = decText(q.P);
     return {
-      main: `もとにする量 ＝ 比べる量 ÷ 割合 だから、${q.comp} ÷ ${d} ＝ ${q.base} です。`,
-      check: `${d} × ${q.base} ＝ ${q.comp}（割合 × もとにする量 ＝ 比べる量）`
+      main: 'もとにする量 ＝ 比べる量 ÷ 割合 だから、' + q.comp + ' ÷ ' + d + ' ＝ ' + q.base + ' です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp + '（割合 × もとにする量 ＝ 比べる量）',
+      concept: 'もとにする量は「1」にあたる量。比べる量が分かっているときは、割合で割ると1にあたる量に戻れるよ。'
     };
   }
-  if (q.mode === 'm4') return { main: q.explain, check: '' };
+  if (q.mode === 'm4') {
+    return {
+      main: q.explain,
+      check: '1 ＝ 100％ ＝ 10割 ／ 0.1 ＝ 10％ ＝ 1割 ／ 0.01 ＝ 1％ ＝ 1分',
+      concept: '小数・百分率・歩合は、同じ割合を別の表し方にしたもの。1、0.1、0.01の関係をもとに考えよう。'
+    };
+  }
+  if (q.mode === 'm6') {
+    const d = decText(q.P);
+    if (q.target === 'rate') return {
+      main: '割合 ＝ 比べる量 ÷ もとにする量 だから、' + q.comp + ' ÷ ' + q.base + ' ＝ ' + d + ' です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp,
+      concept: 'もとにする量を1とみたとき、比べる量がどれだけにあたるかを求めたよ。'
+    };
+    if (q.target === 'comp') return {
+      main: '比べる量 ＝ もとにする量 × 割合 だから、' + q.base + ' × ' + d + ' ＝ ' + q.comp + ' です。',
+      check: q.comp + ' ÷ ' + q.base + ' ＝ ' + d,
+      concept: 'もとにする量を1としたときの何倍かを使って、比べる量を求めたよ。'
+    };
+    return {
+      main: 'もとにする量 ＝ 比べる量 ÷ 割合 だから、' + q.comp + ' ÷ ' + d + ' ＝ ' + q.base + ' です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp,
+      concept: '比べる量から、割合で割って「1」にあたるもとにする量へ戻ったよ。'
+    };
+  }
+  const countWinner = q.countBigger === 'A' ? q.aLabel : q.bLabel;
+  const rateWinner = q.bigger === 'A' ? q.aLabel : q.bLabel;
   return {
-    main: `${q.aLabel} の割合は ${q.A.comp} ÷ ${q.A.base} ＝ ${decText(q.A.P)}、${q.bLabel} の割合は ${q.B.comp} ÷ ${q.B.base} ＝ ${decText(q.B.P)}。だから、割合が大きいのは ${q.bigger === 'A' ? q.aLabel : q.bLabel} です。`,
-    check: `比べるときは、量そのものではなく「割合」で比べるのがポイントです。`
+    main: '実際の数を比べると、' + countWinner + ' の方が多いね。一方、割合は ' + q.aLabel + ' が ' + decText(q.A.P) + '、' + q.bLabel + ' が ' + decText(q.B.P) + '。割合が大きいのは ' + rateWinner + ' です。',
+    check: q.A.comp + ' と ' + q.B.comp + '（実際の数） ／ ' + decText(q.A.P) + ' と ' + decText(q.B.P) + '（割合）',
+    concept: q.countBigger === q.bigger
+      ? '実際の数と割合の両方で、同じ方が大きかったね。比べるものをはっきりさせることが大切だよ。'
+      : '実際の数が多いことと、割合が大きいことは同じではないよ。もとにする量を1にそろえて比べる必要があるんだね。'
   };
 }
 
@@ -630,12 +801,12 @@ function headerHTML() {
 function shell(content) {
   return `<div class="app">${headerHTML()}<main>${content}</main><footer class="app-footer">TT-sensei　学ぶ · 挑戦する · できるようになる</footer></div>`;
 }
-function render() {
+function render(resetScroll = false) {
   if (screen === 'home') root.innerHTML = shell(renderHome());
   else if (screen === 'solve') root.innerHTML = shell(renderSolve());
   else if (screen === 'result') root.innerHTML = shell(renderResult());
   else if (screen === 'records') root.innerHTML = shell(renderRecords());
-  window.scrollTo(0, 0);
+  if (resetScroll) window.scrollTo(0, 0);
 }
 
 function renderHome() {
@@ -643,7 +814,7 @@ function renderHome() {
   const cards = MODE_ORDER.map((id) => {
     const md = MODES[id];
     const nv = NAVI[md.navi];
-    const done = stats.modes[id].cleared ? '　✓ クリアずみ' : '';
+    const done = stats.modes[id].mastered ? '　✓ マスター' : (stats.modes[id].played ? '　挑戦済み' : '');
     return `<button class="mode-card" data-action="start" data-mode="${id}">
       <span class="mode-dot" style="background:${md.color}"></span>
       <img class="navi-face" src="${nv.hint}" alt="${nv.name}">
@@ -657,6 +828,21 @@ function renderHome() {
       <h1>割合を、図で見て<br>ステップで解こう</h1>
       <p>もとにする量を「1」とみて、矢印を引っ張ってかける。それが割合の考え方です。二重数直線で確かめながら進もう。</p>
       <div class="hero-tags"><span>割合</span><span>百分率（％）</span><span>歩合</span><span>二重数直線</span></div>
+    </div>
+  </section>
+  <section class="guide-card">
+    <div class="guide-copy">
+      <p class="guide-kicker">割合の見方</p>
+      <h2>まず「もとにする量」を1とみよう</h2>
+      <p>上の数直線は「量」、下の数直線は「割合」。もとにする量の真下が「1」だよ。</p>
+      <p class="guide-rule">割合 ＝ 比べる量 ÷ もとにする量</p>
+      <p class="guide-note">1より小さい割合も、1より大きい割合もあるよ。矢印の「×割合」に注目しよう。</p>
+    </div>
+    <div class="guide-example">
+      <p class="guide-example-title">例：100人のうち40人</p>
+      ${numLineSVG({ base: 100, comp: 40, P: 40, unit: '人', compact: true })}
+      <p class="guide-equation">40 ÷ 100 ＝ 0.4</p>
+      <p class="guide-note">100人を1とみると、40人は0.4にあたるね。</p>
     </div>
   </section>
   <h2 class="section-title">れんしゅうを選ぼう</h2>
@@ -680,8 +866,8 @@ function renderSolve() {
   const md = MODES[q.mode];
   const nv = NAVI[md.navi];
   const total = session.list.length;
-  const progress = Math.round((session.idx / total) * 100);
   const inFeedback = session.phase === 'feedback';
+  const progress = Math.round(((session.idx + (inFeedback ? 1 : 0)) / total) * 100);
   const step = inFeedback ? null : currentStep();
 
   let side = '';
@@ -694,6 +880,7 @@ function renderSolve() {
         <div><p class="fb-title">${ok ? '正解！' : 'がんばったね'}</p><p>${esc(ex.main)}</p></div>
       </div>
       ${ex.check ? `<div class="check-line">${esc(ex.check)}</div>` : ''}
+      ${ex.concept ? `<div class="concept-note"><strong>考え方をふり返ろう</strong><p>${esc(ex.concept)}</p></div>` : ''}
       <div style="margin-top:12px"><button class="big-btn" data-action="next">${session.idx + 1 >= total ? '結果を見る' : 'つぎへ →'}</button></div>
     </div>`;
   } else if (step.type === 'choice') {
@@ -729,7 +916,7 @@ function renderSolve() {
           <p class="q-hint">${nv.name}：${esc(naviComment(q))}</p>
         </div>
       </div>
-      ${figureFor(q, inFeedback)}
+      ${figureFor(q, inFeedback ? 2 : ((q.mode === 'm1' && session.stepIdx >= 2) || ((q.mode === 'm2' || q.mode === 'm3') && session.stepIdx >= 1) || (q.mode === 'm6' && session.stepIdx >= 2) ? 1 : 0))}
       ${!inFeedback && step.prompt ? `<p class="step-q">${esc(step.prompt)}</p>` : ''}
     </article>
     <div class="side-panel">${side}</div>
@@ -737,7 +924,11 @@ function renderSolve() {
 }
 function miniMsgHTML() {
   if (!session || !session.miniMsg) return '';
-  return `<p class="mini-msg ${session.miniMsg.kind}">${esc(session.miniMsg.text)}</p>`;
+  const step = session.phase === 'steps' ? currentStep() : null;
+  const hint = session.miniMsg.kind === 'ng' && step && step.hint
+    ? `<div class="hint-box"><strong>考え方のヒント</strong><p>${esc(step.hint)}</p></div>`
+    : '';
+  return `<p class="mini-msg ${session.miniMsg.kind}">${esc(session.miniMsg.text)}</p>${hint}`;
 }
 
 function renderResult() {
@@ -747,16 +938,20 @@ function renderResult() {
   const total = session.list.length;
   const newBadges = earnedBadgeIds().filter((id) => !session.badgesBefore.includes(id))
     .map((id) => BADGES.find((b) => b.id === id));
+  const required = session.requiredCorrect || Math.ceil(total * 0.8);
+  const remaining = Math.max(0, required - session.correctCount);
   return `
   <section class="result-card">
     <img class="pose" src="${nv.full}" alt="${nv.name}">
-    <p class="result-score">${total}問中 ${session.correctCount}問 正解</p>
+    <p class="result-score">${total}問中 ${session.correctCount}問 最初から正解</p>
     <p class="result-sub">${isTokkon
       ? `${session.clearedCount}問 克服しました。${mistakes.length ? `のこりの まちがえた問題は ${mistakes.length}問 です。` : 'まちがえた問題は 全部 克服できました！'}`
-      : 'おつかれさま！ まちがえた問題は「とっくん」に記録されています。'}</p>
+      : session.passed
+        ? `合格！ ${required}問以上、最初から正解できました。続けて別の問題にも挑戦しよう。`
+        : `あと ${remaining}問、最初から正解できると合格だよ。まちがえた問題は「とっくん」で考え方を確かめよう。`}</p>
     ${newBadges.length ? `<div class="new-badges">${newBadges.map((b) => `<span class="badge-chip">🏅 ${esc(b.label)}</span>`).join('')}</div>` : ''}
     <div class="result-actions">
-      <button class="big-btn" data-action="again">もう一度</button>
+      <button class="big-btn" data-action="again">もう一度挑戦</button>
       <button class="big-btn sub" data-action="home">トップへ</button>
     </div>
   </section>`;
@@ -766,15 +961,17 @@ function renderRecords() {
   const rows = MODE_ORDER.map((id) => {
     const st = stats.modes[id];
     const rate = st.answered ? Math.round((st.correct / st.answered) * 100) + '%' : '—';
-    return `<tr><th>${MODES[id].title}</th><td>${st.played}回</td><td>${st.answered}問</td><td>${st.correct}問</td><td>${rate}</td></tr>`;
+    const status = st.mastered ? 'マスター' : st.played ? '挑戦済み' : 'これから';
+    return `<tr><th>${MODES[id].title}</th><td>${st.played}回</td><td>${st.answered}問</td><td>${st.correct}問</td><td>${rate}</td><td>${status}</td></tr>`;
   }).join('');
   const chips = BADGES.map((b) => `<span class="badge-chip ${b.test() ? '' : 'locked'}">${b.test() ? '🏅' : '・'} ${esc(b.label)}</span>`).join('');
   return `
   <div class="back-row"><button class="back-btn" data-action="home">← トップへ</button></div>
   <section class="records-card">
     <h2>学習の記録</h2>
+    <p class="foot-note">正答率は、まちがえずに最初から正解できた問題の割合です。</p>
     <table class="rec-table">
-      <tr><th>モード</th><th>実施回数</th><th>解いた数</th><th>正解</th><th>正答率</th></tr>
+      <tr><th>モード</th><th>実施回数</th><th>解いた数</th><th>最初から正解</th><th>正答率</th><th>到達</th></tr>
       ${rows}
     </table>
     <p class="foot-note">通算正解 ${stats.totalCorrect}問 ・ とっくんで克服した問題 ${stats.tokkonClearedTotal}件 ・ 残っている まちがえた問題 ${mistakes.length}件</p>
@@ -792,18 +989,18 @@ root.addEventListener('click', (ev) => {
   const el = ev.target.closest('[data-action]');
   if (!el) return;
   const a = el.dataset.action;
-  if (a === 'home') { screen = 'home'; session = null; render(); }
+  if (a === 'home') { screen = 'home'; session = null; render(true); }
   else if (a === 'sound') { settings.sound = !settings.sound; saveAll(); render(); }
   else if (a === 'start') { const m = el.dataset.mode; startSession(m, GENERATORS[m]()); }
   else if (a === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); }
-  else if (a === 'records') { screen = 'records'; render(); }
+  else if (a === 'records') { screen = 'records'; render(true); }
   else if (a === 'choice') pickChoice(Number(el.dataset.i));
   else if (a === 'key') pressKey(el.dataset.k);
   else if (a === 'confirm') confirmInput();
   else if (a === 'next') nextQuestion();
   else if (a === 'again') {
     if (!session) return;
-    if (session.mode === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); else { screen = 'home'; render(); } }
+    if (session.mode === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); else { screen = 'home'; render(true); } }
     else startSession(session.mode, GENERATORS[session.mode]());
   }
 });
@@ -830,4 +1027,4 @@ window.__wariai = {
   }
 };
 
-render();
+render(true);

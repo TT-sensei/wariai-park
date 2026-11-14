@@ -17,6 +17,7 @@
   --m3:#7a5fd0;
   --m4:#c94f9e;
   --m5:#e05252;
+  --m6:#6476b8;
   --tokkon:#b07d2b;
   --radius:20px;
 }
@@ -182,7 +183,7 @@ img{user-select:none;-webkit-user-drag:none}
 .result-actions{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .result-actions .big-btn{width:auto;min-width:180px}
 .records-card h2{margin:0 0 12px;font-size:22px}
-.rec-table{width:100%;border-collapse:collapse;font-size:16.5px}
+.rec-table{width:100%;min-width:720px;border-collapse:collapse;font-size:16.5px}
 .rec-table th,.rec-table td{border-bottom:2px solid #ddeae6;padding:9px 8px;text-align:center}
 .rec-table th:first-child,.rec-table td:first-child{text-align:left}
 .badge-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -215,9 +216,55 @@ img{user-select:none;-webkit-user-drag:none}
 
 /* ---------- 狭い画面 ---------- */
 @media (max-width:900px){
+  /* タブレットでは図と回答を上下に置き、一覧カードは2列を保つ */
   .solve{grid-template-columns:1fr}
-  .hero{flex-direction:column;align-items:stretch}
-  .hero-img{width:100%;max-height:240px}
-  .mode-grid,.tool-grid{grid-template-columns:1fr}
+  .hero{flex-direction:row;align-items:center}
+  .hero-img{width:min(360px,42%);max-height:240px}
+  .mode-grid,.tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hero-text h1{font-size:23px}
+}
+@media (max-width:640px){
+  .hero{flex-direction:column;align-items:stretch}
+  .hero-img{width:100%;max-height:220px}
+  .mode-grid,.tool-grid{grid-template-columns:1fr}
+  .guide-card{grid-template-columns:1fr}
+}
+
+
+/* ---------- 学習の見通し・考え方支援 ---------- */
+.guide-card{
+  display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,1.4fr);gap:18px;align-items:center;
+  background:#fff;border:2px solid var(--line);border-radius:var(--radius);padding:16px 18px;
+  box-shadow:0 2px 8px rgba(40,90,80,.06);
+}
+.guide-kicker{margin:0 0 5px;color:var(--primary-deep);font-size:13px;font-weight:800;letter-spacing:.04em}
+.guide-copy h2{font-size:21px;line-height:1.35;margin:0 0 8px}
+.guide-copy>p:not(.guide-kicker){font-size:15px;line-height:1.55;margin:6px 0;color:#4c473f}
+.guide-rule{
+  margin:10px 0!important;padding:9px 12px;border-radius:12px;background:var(--primary-soft);
+  color:var(--primary-deep)!important;font-size:17px!important;font-weight:800;text-align:center;
+}
+.guide-note{font-size:13.5px!important;color:var(--sub)!important;line-height:1.5}
+.guide-example{min-width:0;background:#f7fbfa;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.guide-example-title{font-size:15px;font-weight:800;text-align:center;margin:0 0 2px}
+.guide-example svg{display:block;width:100%;height:auto}
+.guide-equation{margin:0;text-align:center;color:var(--primary-deep);font-size:18px;font-weight:800}
+.hint-box{
+  margin-top:10px;padding:10px 12px;border-radius:12px;background:#f0f8f6;
+  border:1px solid #b9ded5;border-left:5px solid var(--primary);text-align:left;
+}
+.hint-box strong{display:block;color:var(--primary-deep);font-size:14px;margin-bottom:3px}
+.hint-box p{margin:0;color:var(--ink);font-size:15px;line-height:1.55}
+.mini-msg.notice{color:var(--primary-deep);background:var(--primary-soft);border-radius:9px;padding:6px 9px}
+.concept-note{
+  margin-top:10px;padding:10px 12px;border-radius:12px;background:#f1f8f6;border:1px solid var(--line);
+}
+.concept-note strong{display:block;color:var(--primary-deep);font-size:14px;margin-bottom:4px}
+.concept-note p{margin:0;font-size:15px;line-height:1.55}
+.records-card{overflow-x:auto}
+@media (max-width:900px){
+  .guide-card{grid-template-columns:minmax(210px,.9fr) minmax(0,1.1fr)}
+}
+@media (max-width:640px){
+  .guide-card{grid-template-columns:1fr;padding:14px}
 }

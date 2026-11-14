@@ -1,0 +1,223 @@
+/* 割合パーク style.css — 明るい背景・白い角丸カード・大きなボタン（タブレット優先） */
+:root{
+  --ink:#33302b;
+  --sub:#6f6a5e;
+  --primary:#ef6c2a;
+  --primary-deep:#c7500f;
+  --primary-soft:#fff0df;
+  --bg:#fff8ef;
+  --card:#ffffff;
+  --line:#f0ddc4;
+  --ok:#2e9e5b;
+  --ok-soft:#e5f6ec;
+  --ng:#d94f4f;
+  --ng-soft:#fdecec;
+  --m1:#2b8fd9;
+  --m2:#37a866;
+  --m3:#7a5fd0;
+  --m4:#c94f9e;
+  --m5:#e05252;
+  --tokkon:#b07d2b;
+  --radius:20px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+  background:linear-gradient(180deg,#fff8ef 0%,#ffedd6 100%);
+  color:var(--ink);
+  min-height:100vh;
+}
+button{font-family:inherit;cursor:pointer;color:inherit}
+img{user-select:none;-webkit-user-drag:none}
+
+.app{max-width:1180px;margin:0 auto;padding:10px 14px 18px}
+
+/* ---------- ヘッダー ---------- */
+.app-header{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:6px 2px 10px;
+}
+.app-brand{
+  display:flex;align-items:center;gap:10px;background:none;border:none;text-align:left;padding:4px;
+}
+.brand-mark{
+  width:52px;height:52px;border-radius:16px;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;
+  box-shadow:0 3px 0 var(--primary-deep);
+}
+.app-brand strong{display:block;font-size:22px;line-height:1.15}
+.app-brand small{display:block;font-size:13px;color:var(--sub);font-weight:700}
+.header-actions{display:flex;gap:8px;align-items:center}
+.pill-btn{
+  min-height:48px;padding:8px 16px;border-radius:999px;border:2px solid var(--line);
+  background:#fff;font-size:16px;font-weight:700;
+}
+.pill-btn:active{transform:translateY(1px)}
+
+/* ---------- トップ ---------- */
+.hero{
+  background:var(--card);border-radius:var(--radius);padding:16px 18px;
+  display:flex;gap:18px;align-items:center;box-shadow:0 2px 10px rgba(199,80,15,.08);
+}
+.hero-img{
+  flex:0 0 auto;width:min(430px,44%);max-height:290px;object-fit:contain;
+  border-radius:14px;background:#fff6ea;
+}
+.hero-text h1{font-size:27px;margin:0 0 8px;line-height:1.35}
+.hero-text p{margin:0 0 10px;font-size:16px;line-height:1.6;color:#4c473f}
+.hero-tags{display:flex;gap:8px;flex-wrap:wrap}
+.hero-tags span{
+  background:var(--primary-soft);color:var(--primary-deep);font-weight:800;font-size:14px;
+  padding:5px 12px;border-radius:999px;
+}
+.section-title{font-size:20px;margin:18px 2px 10px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mode-card{
+  display:flex;gap:14px;align-items:center;text-align:left;background:var(--card);
+  border:3px solid var(--line);border-radius:var(--radius);padding:14px 16px;min-height:104px;
+  box-shadow:0 2px 6px rgba(120,70,10,.06);
+}
+.mode-card:active{transform:translateY(1px)}
+.mode-card .navi-face{width:72px;height:72px;border-radius:50%;object-fit:cover;background:#fdf3e3;flex:0 0 auto}
+.mode-card b{display:block;font-size:21px;margin-bottom:3px}
+.mode-card small{display:block;font-size:14.5px;color:#5c564c;line-height:1.45}
+.mode-card .mode-dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto}
+.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tool-card{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;
+  background:var(--card);border:3px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;min-height:88px;
+}
+.tool-card b{display:block;font-size:20px;margin-bottom:3px}
+.tool-card small{display:block;font-size:14.5px;color:#5c564c;line-height:1.45}
+.count-badge{
+  min-width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex:0 0 auto;
+}
+.count-badge.zero{background:#d8d2c6}
+.foot-note{font-size:13.5px;color:var(--sub);margin:12px 2px 0}
+
+/* ---------- 解く画面 ---------- */
+.session-head{display:flex;align-items:center;gap:14px;margin:2px 2px 10px}
+.mode-name{
+  font-weight:800;font-size:17px;background:var(--primary-soft);color:var(--primary-deep);
+  padding:6px 14px;border-radius:999px;white-space:nowrap;
+}
+.progress-wrap{flex:1}
+.progress-head{display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#5c564c;margin-bottom:4px}
+.progress-track{height:12px;border-radius:999px;background:#f3e3cb;overflow:hidden}
+.progress-value{height:100%;background:var(--primary);border-radius:999px;transition:width .3s}
+.solve{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:14px;align-items:start}
+.q-card{background:var(--card);border-radius:var(--radius);padding:16px 18px;box-shadow:0 2px 10px rgba(199,80,15,.08)}
+.q-top{display:flex;gap:12px;align-items:flex-start}
+.q-navi{width:74px;height:74px;border-radius:50%;object-fit:cover;background:#fdf3e3;flex:0 0 auto}
+.q-prompt{font-size:19.5px;line-height:1.55;margin:2px 0 6px;font-weight:600}
+.q-hint{font-size:15px;color:#7a7264;margin:0;line-height:1.5}
+.q-hint b{color:var(--primary-deep)}
+.step-q{font-size:19px;font-weight:800;margin:12px 0 0;line-height:1.5}
+.fig-box{
+  margin-top:12px;background:#fffaf1;border:2px solid #f5e3c2;border-radius:16px;padding:8px 10px 4px;
+}
+.fig-box svg{display:block;width:100%;height:auto}
+.fig-cap{font-size:13px;color:#8a8172;text-align:center;margin:2px 0 4px}
+.side-panel{display:flex;flex-direction:column;gap:12px}
+.panel-card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:0 2px 10px rgba(199,80,15,.08)}
+.panel-title{font-size:15px;font-weight:800;color:#7a7264;margin:0 0 10px}
+.choices{display:grid;gap:10px}
+.choice-btn{
+  min-height:58px;border-radius:16px;border:3px solid var(--line);background:#fff;
+  font-size:19px;font-weight:800;padding:10px 14px;text-align:center;line-height:1.35;
+}
+.choice-btn:active{transform:translateY(1px)}
+.choice-btn.picked-ok{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+.choice-btn.picked-ng{border-color:var(--ng);background:var(--ng-soft);color:var(--ng);opacity:.55}
+.input-display{
+  min-height:60px;border:3px solid var(--line);border-radius:14px;background:#fffdf8;
+  display:flex;align-items:center;justify-content:flex-end;padding:6px 14px;
+  font-size:32px;font-weight:800;letter-spacing:1px;margin-bottom:10px;
+}
+.input-display .placeholder{color:#c9c0ae;font-size:20px;font-weight:700}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.key-btn{
+  min-height:56px;border-radius:14px;border:2px solid var(--line);background:#fff;
+  font-size:23px;font-weight:800;
+}
+.key-btn:active{background:var(--primary-soft)}
+.key-btn.util{font-size:16px;background:#fdf3e3}
+.big-btn{
+  min-height:58px;border-radius:16px;border:none;background:var(--primary);color:#fff;
+  font-size:20px;font-weight:800;padding:10px 22px;box-shadow:0 3px 0 var(--primary-deep);width:100%;
+}
+.big-btn:active{transform:translateY(2px);box-shadow:none}
+.big-btn.sub{background:#fff;color:var(--ink);border:3px solid var(--line);box-shadow:none}
+.big-btn:disabled{background:#ddd5c6;box-shadow:none;color:#8a8172}
+.mini-msg{min-height:26px;font-size:16.5px;font-weight:800;margin:2px 0 0;line-height:1.45}
+.mini-msg.ok{color:var(--ok)}
+.mini-msg.ng{color:var(--ng)}
+
+/* ---------- フィードバック ---------- */
+.feedback{
+  margin-top:12px;border-radius:16px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;
+}
+.feedback.ok{background:var(--ok-soft);border:2px solid #bfe6cf}
+.feedback.ng{background:var(--ng-soft);border:2px solid #f6cdcd}
+.feedback img{width:64px;height:64px;border-radius:50%;object-fit:cover;background:#fff;flex:0 0 auto}
+.feedback .fb-title{font-size:19px;font-weight:800;margin:0 0 4px}
+.feedback p{margin:0;font-size:15.5px;line-height:1.6}
+.check-line{
+  margin-top:10px;background:#eef7ff;border:2px solid #cfe6fb;border-radius:12px;
+  padding:8px 12px;font-size:16.5px;font-weight:800;text-align:center;
+}
+
+/* ---------- 結果・記録 ---------- */
+.result-card,.records-card{
+  background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 2px 10px rgba(199,80,15,.08);
+}
+.result-card{text-align:center}
+.result-card .pose{height:230px;max-width:100%;object-fit:contain}
+.result-score{font-size:27px;font-weight:800;margin:8px 0 4px}
+.result-sub{font-size:16px;color:#5c564c;line-height:1.6;margin:0 0 6px}
+.new-badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.result-actions{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.result-actions .big-btn{width:auto;min-width:180px}
+.records-card h2{margin:0 0 12px;font-size:22px}
+.rec-table{width:100%;border-collapse:collapse;font-size:16.5px}
+.rec-table th,.rec-table td{border-bottom:2px solid #f3e7d3;padding:9px 8px;text-align:center}
+.rec-table th:first-child,.rec-table td:first-child{text-align:left}
+.badge-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.badge-chip{
+  border-radius:999px;padding:8px 14px;font-size:15px;font-weight:800;
+  background:#fdf3e3;color:#8a6d1f;border:2px solid #ecd9a8;
+}
+.badge-chip.locked{background:#f1eee7;color:#a39a89;border-color:#e0dacb}
+.back-row{margin-bottom:10px}
+.back-btn{
+  min-height:48px;border-radius:999px;border:2px solid var(--line);background:#fff;
+  font-size:16px;font-weight:700;padding:8px 18px;
+}
+.app-footer{font-size:13px;color:var(--sub);text-align:center;margin-top:16px}
+
+/* ---------- 二重数直線のアニメーション ---------- */
+.nl-arrow-path{
+  stroke-dasharray:100;stroke-dashoffset:100;
+  animation:nlDraw 1s ease-out .2s forwards;
+}
+.nl-head{opacity:0;animation:nlFade .3s ease-out 1.05s forwards}
+.nl-pop{opacity:0;animation:nlFade .35s ease-out 1.1s forwards}
+@keyframes nlDraw{to{stroke-dashoffset:0}}
+@keyframes nlFade{to{opacity:1}}
+@media (prefers-reduced-motion: reduce){
+  .nl-arrow-path{animation:none;stroke-dashoffset:0}
+  .nl-head,.nl-pop{animation:none;opacity:1}
+  .progress-value{transition:none}
+}
+
+/* ---------- 狭い画面 ---------- */
+@media (max-width:900px){
+  .solve{grid-template-columns:1fr}
+  .hero{flex-direction:column;align-items:stretch}
+  .hero-img{width:100%;max-height:240px}
+  .mode-grid,.tool-grid{grid-template-columns:1fr}
+  .hero-text h1{font-size:23px}
+}

@@ -418,9 +418,9 @@ function buildSteps(q) {
       choiceStep('まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
         [[`${q.baseName}（${q.base}${q.unit}）`, true], [`${q.compName}（${q.comp}${q.unit}）`, false]],
         '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。'),
-      choiceStep('割合は「1」と比べて、どこにくるかな？',
-        [['0と1の間', q.P < 100], ['1と同じ', q.P === 100], ['1より大きい', q.P > 100]],
-        '下の数直線の「1」を基準にしよう。比べる量が、もとにする量より小さいか大きいか考えてね。'),
+      choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+        [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+        '下の数直線の「1」を基準に、比べる量の印の位置を予想しよう。'),
       choiceStep('割合を求める式は、どちらかな？',
         [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false]],
         '「比べる量」を「もとにする量」で割る順番だよ。二重数直線の下の段も見てみよう。'),
@@ -431,9 +431,9 @@ function buildSteps(q) {
   if (q.mode === 'm2') {
     const d = decText(q.P);
     return [
-      choiceStep('比べる量は、もとにする量と比べてどうなるかな？',
-        [['小さくなる', q.P < 100], ['同じになる', q.P === 100], ['大きくなる', q.P > 100]],
-        '割合が1より小さいときは、もとにする量の一部。1より大きいときは、もとにする量をこえるよ。'),
+      choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+        [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+        '割合が1より小さいなら左側、1より大きいなら右側。図の「1」を基準にしよう。'),
       choiceStep('比べる量を求める式は、どれかな？',
         [[`${q.base} × ${d}`, true], [`${q.base} ÷ ${d}`, false], [`${d} ÷ ${q.base}`, false]],
         'もとにする量を1とみると、比べる量はその何倍かな。矢印の「×割合」に注目しよう。'),
@@ -444,9 +444,9 @@ function buildSteps(q) {
   if (q.mode === 'm3') {
     const d = decText(q.P);
     return [
-      choiceStep('もとにする量は、比べる量と比べてどうなるかな？',
-        [['大きくなる', q.P < 100], ['同じになる', q.P === 100], ['小さくなる', q.P > 100]],
-        '割合が1より小さいなら、比べる量は全体の一部。もとにする量は比べる量より大きいよ。'),
+      choiceStep('もとにする量の印は、比べる量の印と比べてどこにくるかな？',
+        [['左側', q.P > 100], ['同じ位置', q.P === 100], ['右側', q.P < 100]],
+        'もとにする量は「1」の位置。比べる量の印と、左右の位置関係を考えよう。'),
       choiceStep('もとにする量を求める式は、どれかな？',
         [[`${q.comp} ÷ ${d}`, true], [`${q.comp} × ${d}`, false], [`${d} ÷ ${q.comp}`, false]],
         'もとにする量 × 割合 ＝ 比べる量。□をもとにする量にして、式を逆にたどろう。'),
@@ -461,9 +461,9 @@ function buildSteps(q) {
     const targetStep = choiceStep('この問題で、求めるものは何かな？',
       [['割合', q.target === 'rate'], ['比べる量', q.target === 'comp'], ['もとにする量', q.target === 'base']],
       '問題文の最後を読み、まだ分かっていない量に注目しよう。');
-    const relationStep = choiceStep('比べる量は、もとにする量と比べてどうなるかな？',
-      [['小さくなる', q.P < 100], ['同じになる', q.P === 100], ['大きくなる', q.P > 100]],
-      '割合が1より小さいか、1と同じか、1より大きいかを考えよう。二重数直線の「1」が基準だよ。');
+    const relationStep = choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
+      [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
+      '下の数直線の「1」を基準に、比べる量の印の位置を予想しよう。');
     const d = decText(q.P);
     let formulaPairs, answer, prompt, hint;
     if (q.target === 'rate') {
@@ -893,7 +893,7 @@ function renderSolve() {
           <p class="q-hint">${nv.name}：${esc(naviComment(q))}</p>
         </div>
       </div>
-      ${figureFor(q, inFeedback)}
+      ${figureFor(q, inFeedback || (q.mode === 'm1' && session.stepIdx >= 2) || ((q.mode === 'm2' || q.mode === 'm3') && session.stepIdx >= 1) || (q.mode === 'm6' && session.stepIdx >= 2))}
       ${!inFeedback && step.prompt ? `<p class="step-q">${esc(step.prompt)}</p>` : ''}
     </article>
     <div class="side-panel">${side}</div>

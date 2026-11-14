@@ -59,6 +59,7 @@ const MODE_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
 const LS_MISTAKES = 'wariaiPark.mistakes.v1';
 const LS_STATS = 'wariaiPark.stats.v1';
 const LS_SETTINGS = 'wariaiPark.settings.v1';
+const LS_RECENT = 'wariaiPark.recent.v1';
 
 function loadJSON(key, fallback) {
   try {
@@ -88,11 +89,17 @@ if (!Number.isFinite(stats.totalCorrect)) stats.totalCorrect = 0;
 if (!Number.isFinite(stats.tokkonClearedTotal)) stats.tokkonClearedTotal = 0;
 let settings = loadJSON(LS_SETTINGS, { sound: true });
 if (typeof settings.sound !== 'boolean') settings.sound = true;
+let recentQuestions = loadJSON(LS_RECENT, {});
+if (!recentQuestions || typeof recentQuestions !== 'object' || Array.isArray(recentQuestions)) recentQuestions = {};
+for (const m of MODE_ORDER) {
+  if (!Array.isArray(recentQuestions[m])) recentQuestions[m] = [];
+}
 
 function saveAll() {
   saveJSON(LS_MISTAKES, mistakes);
   saveJSON(LS_STATS, stats);
   saveJSON(LS_SETTINGS, settings);
+  saveJSON(LS_RECENT, recentQuestions);
 }
 function addMistake(q) {
   if (!mistakes.some((x) => x.key === q.key)) {
@@ -155,11 +162,12 @@ function esc(s) {
    hide: 'rate' | 'comp' | 'base' | null（解いている間、答えを隠す） */
 function numLineSVG(o) {
   const compact = !!o.compact;
-  const W = 560, H = compact ? 138 : 158;
+  const W = 560, H = compact ? 158 : 174;
   const L = 66, R = 538, span = R - L;
   const topY = compact ? 42 : 50;
   const botY = compact ? 108 : 126;
-  const ratio = o.comp / o.base;                 // 位置計算専用（判定には使わない）
+  const ratio = o.comp / o.base;
+  const samePosition = Math.abs(ratio - 1) < 1e-9;
   const scaleMax = ratio > 1 ? ratio * 1.14 + 0.06 : 1.2;
   const X = (f) => L + (f / scaleMax) * span;
   const x0 = X(0), x1 = X(1), xr = X(ratio);
@@ -178,30 +186,35 @@ function numLineSVG(o) {
   const labelW = arrowLabel.length * 10 + 14;
   let s = '';
   s += `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="二重数直線">`;
-  // ガイド（対応する位置を結ぶ破線）
+  // 割合1では同じ位置のガイドや目盛りを重ねない。
   s += `<line x1="${x0}" y1="${topY}" x2="${x0}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   s += `<line x1="${x1}" y1="${topY - 16}" x2="${x1}" y2="${botY}" stroke="#7fc4b8" stroke-width="1.5" stroke-dasharray="3 4"/>`;
-  if (!suppressRelation) s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
-  // 2本の線
+  if (!suppressRelation && !samePosition) s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   s += `<line x1="${L - 8}" y1="${topY}" x2="${R + 8}" y2="${topY}" stroke="#8a8172" stroke-width="2.5"/>`;
   s += `<line x1="${L - 8}" y1="${botY}" x2="${R + 8}" y2="${botY}" stroke="#8a8172" stroke-width="2.5"/>`;
   s += `<text x="8" y="${topY + 5}" font-size="13" fill="#8a8172" font-weight="700">量</text>`;
   s += `<text x="8" y="${botY + 5}" font-size="13" fill="#8a8172" font-weight="700">割合</text>`;
-  // 目盛り
-  const tick = (x, big) => `<line x1="${x}" y1="${topY - 5}" x2="${x}" y2="${topY + 5}" stroke="#8a8172" stroke-width="2"/><line x1="${x}" y1="${botY - 5}" x2="${x}" y2="${botY + 5}" stroke="#8a8172" stroke-width="2"/>`;
-  s += tick(x0); s += tick(x1); if (!suppressRelation) s += tick(xr);
-  // 上段ラベル（量）
+  const tick = (x) => `<line x1="${x}" y1="${topY - 5}" x2="${x}" y2="${topY + 5}" stroke="#8a8172" stroke-width="2"/><line x1="${x}" y1="${botY - 5}" x2="${x}" y2="${botY + 5}" stroke="#8a8172" stroke-width="2"/>`;
+  s += tick(x0); s += tick(x1);
+  if (!suppressRelation && !samePosition) s += tick(xr);
   s += `<text x="${x0}" y="${topY - 12}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
-  s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#0a6b5e" text-anchor="middle" font-weight="700">もとにする量</text>`;
-  s += `<text x="${x1}" y="${topY - 10}" font-size="16.5" fill="#33302b" text-anchor="middle" font-weight="800">${esc(baseTop)}</text>`;
-  if (!suppressRelation) s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
-  // 下段ラベル（割合）
+  if (samePosition && !suppressRelation) {
+    s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#0a6b5e" text-anchor="middle" font-weight="700">もとにする量・比べる量</text>`;
+    s += `<text x="${x1}" y="${topY - 8}" font-size="15" fill="#33302b" text-anchor="middle" font-weight="800">${esc(baseTop)} ＝ ${esc(compTop)}</text>`;
+  } else {
+    s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#0a6b5e" text-anchor="middle" font-weight="700">もとにする量</text>`;
+    s += `<text x="${x1}" y="${topY - 10}" font-size="16.5" fill="#33302b" text-anchor="middle" font-weight="800">${esc(baseTop)}</text>`;
+    if (!suppressRelation) s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
+  }
   s += `<text x="${x0}" y="${botY + 20}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
   s += `<circle cx="${x1}" cy="${botY + 14}" r="13.5" fill="#e2f4f0" stroke="#0e8a7a" stroke-width="2.5"/>`;
   s += `<text x="${x1}" y="${botY + 20}" font-size="17" fill="#0a6b5e" text-anchor="middle" font-weight="800">1</text>`;
-  if (!suppressRelation) s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
-  // 矢印（1 の位置から比べる量の位置へ伸びる）
-  if (!suppressRelation) {
+  if (!suppressRelation && samePosition) {
+    s += `<text x="${x1}" y="${botY + 39}" font-size="13" fill="#0a6b5e" text-anchor="middle" font-weight="700">100％</text>`;
+  } else if (!suppressRelation) {
+    s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
+  }
+  if (!suppressRelation && !samePosition) {
     s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
     s += `<polygon class="nl-head" points="${headPts}" fill="#0e8a7a"/>`;
     s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#0e8a7a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
@@ -234,6 +247,27 @@ const M1_BIG = [
   { base: 200, comp: 300, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: 'お祭りの来場者は、去年は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' },
   { base: 100, comp: 100, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の米の収穫量は {B}kgでした。今年も {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' }
 ];
+
+M1_SMALL.push(
+  { base: 36, comp: 27, unit: '人', baseName: '学年の人数', compName: '参加した人', text: '学年は {B}人です。そのうち {C}人が行事に参加しました。参加した人は、全体のどれだけの割合ですか。' },
+  { base: 48, comp: 12, unit: 'こ', baseName: '箱の中のボールの数', compName: '赤いボールの数', text: '箱にはボールが {B}こ入っています。そのうち赤いボールは {C}こです。赤いボールは、全体のどれだけの割合ですか。' },
+  { base: 75, comp: 45, unit: 'ページ', baseName: '本のページ数', compName: '読んだページ数', text: '{B}ページの本のうち、{C}ページを読みました。読んだページ数は、全体のどれだけの割合ですか。' },
+  { base: 90, comp: 72, unit: '点', baseName: 'テストの満点', compName: '取れた点数', text: '{B}点満点のテストで、{C}点取れました。取れた点数は、満点のどれだけの割合ですか。' },
+  { base: 160, comp: 120, unit: 'mL', baseName: '水そうの水の量', compName: '使った水の量', text: '水そうに水が {B}mLあります。そのうち {C}mL使いました。使った量は、全体のどれだけの割合ですか。' },
+  { base: 40, comp: 16, unit: '本', baseName: 'シュートした本数', compName: '成功した本数', text: 'シュートを {B}本しました。そのうち {C}本成功しました。成功した割合はどれだけですか。' },
+  { base: 72, comp: 54, unit: 'こ', baseName: '折り紙の枚数', compName: '使った枚数', text: '折り紙が {B}枚あります。そのうち {C}枚使いました。使った枚数は、全体のどれだけの割合ですか。' },
+  { base: 240, comp: 180, unit: 'g', baseName: '材料の重さ', compName: '使った重さ', text: '材料が {B}gあります。そのうち {C}g使いました。使った重さは、全体のどれだけの割合ですか。' },
+  { base: 35, comp: 21, unit: '人', baseName: 'グループの人数', compName: '係になった人', text: 'グループは {B}人です。そのうち {C}人が係になりました。係になった人は、全体のどれだけの割合ですか。' },
+  { base: 60, comp: 15, unit: '分', baseName: '活動した時間', compName: '片付けに使った時間', text: '活動時間は {B}分です。そのうち {C}分を片付けに使いました。片付けの時間は、全体のどれだけの割合ですか。' }
+);
+M1_BIG.push(
+  { base: 60, comp: 90, unit: 'こ', baseName: '目標の数', compName: 'できた数', text: '工作の目標は {B}こです。実際には {C}こできました。できた数は、目標のどれだけの割合ですか。' },
+  { base: 120, comp: 150, unit: 'kg', baseName: '去年の収穫量', compName: '今年の収穫量', text: '去年の収穫量は {B}kgでした。今年は {C}kgでした。今年の収穫量は、去年のどれだけの割合ですか。' },
+  { base: 100, comp: 110, unit: 'cm', baseName: '先月の長さ', compName: '今月の長さ', text: '先月の長さは {B}cmでした。今月は {C}cmになりました。今月の長さは、先月のどれだけの割合ですか。' },
+  { base: 80, comp: 120, unit: '人', baseName: '去年の来場者数', compName: '今年の来場者数', text: '去年の来場者は {B}人でした。今年は {C}人でした。今年の来場者数は、去年のどれだけの割合ですか。' },
+  { base: 200, comp: 180, unit: 'ページ', baseName: '目標のページ数', compName: '読んだページ数', text: '読書の目標は {B}ページです。{C}ページ読みました。読んだページ数は、目標のどれだけの割合ですか。' }
+);
+
 function fillText(t, b, c) { return t.replace('{B}', b).replace('{C}', c); }
 function genM1() {
   const bigs = shuffle(M1_BIG).slice(0, Math.random() < 0.5 ? 1 : 2);
@@ -276,6 +310,31 @@ const M23_SCENES = [
     unit: 'ページ',
     m2: (b, r) => '先月に読んだページ数は ' + b + 'ページでした。今月は先月の ' + r + ' です。今月は何ページ読みましたか。',
     m3: (c, r) => '今月に読んだページ数は ' + c + 'ページで、先月の ' + r + ' です。先月は何ページ読みましたか。'
+  },
+  {
+    unit: 'm',
+    m2: (b, r) => '道のりは全部で ' + b + 'mです。進んだ道のりは全体の ' + r + ' です。進んだ道のりは何mですか。',
+    m3: (c, r) => '進んだ道のりは ' + c + 'mで、道のり全体の ' + r + ' です。道のり全体は何mですか。'
+  },
+  {
+    unit: 'L',
+    m2: (b, r) => 'タンクには水が ' + b + 'L入っています。その ' + r + ' を使いました。使った水は何Lですか。',
+    m3: (c, r) => '水を ' + c + 'L使いました。これはタンクの水全体の ' + r + ' です。はじめの水は何Lでしたか。'
+  },
+  {
+    unit: '円',
+    m2: (b, r) => '品物のもとのねだんは ' + b + '円です。ねびき額はもとのねだんの ' + r + ' です。ねびき額は何円ですか。',
+    m3: (c, r) => 'ねびき額は ' + c + '円で、もとのねだんの ' + r + ' です。もとのねだんは何円ですか。'
+  },
+  {
+    unit: '人',
+    m2: (b, r) => 'アンケートに ' + b + '人が答えました。そのうち ' + r + ' の人が「はい」と答えました。「はい」は何人ですか。',
+    m3: (c, r) => 'アンケートで「はい」と答えた人は ' + c + '人です。これは答えた人全体の ' + r + ' です。答えた人は何人ですか。'
+  },
+  {
+    unit: 'kg',
+    m2: (b, r) => '荷物の重さは ' + b + 'kgです。運んだ重さは全体の ' + r + ' です。運んだ荷物は何kgですか。',
+    m3: (c, r) => '運んだ荷物は ' + c + 'kgで、荷物全体の ' + r + ' です。荷物全体は何kgですか。'
   }
 ];
 function repOf(P, kind) {
@@ -329,10 +388,10 @@ function makeThreeChoices(correct, candidates) {
 function genM4() {
   const kinds = shuffle(['d2p', 'p2d', 'w2p', 'd2w', 'd2p', 'p2d', 'w2p', 'd2w']);
   const pools = {
-    d2p: shuffle([35, 8, 100, 120, 45, 3, 65, 90, 125]),
-    p2d: shuffle([45, 100, 120, 6, 70, 35, 250, 90, 15]),
-    w2p: shuffle([35, 70, 5, 45, 100, 120, 25, 80, 15]),
-    d2w: shuffle([70, 45, 100, 120, 5, 35, 90, 25, 60])
+    d2p: shuffle([35, 8, 100, 120, 45, 3, 65, 90, 125, 15, 25, 55, 75, 85, 105, 135, 150, 175, 200, 225, 250, 12, 18, 28]),
+    p2d: shuffle([45, 100, 120, 6, 70, 35, 250, 90, 15, 25, 55, 75, 85, 105, 135, 150, 175, 200, 225, 12, 18, 28, 320, 5]),
+    w2p: shuffle([35, 70, 5, 45, 100, 120, 25, 80, 15, 2, 8, 12, 18, 22, 33, 55, 65, 95, 105, 135, 150, 175, 200, 250]),
+    d2w: shuffle([70, 45, 100, 120, 5, 35, 90, 25, 60, 2, 8, 12, 18, 22, 33, 55, 65, 95, 105, 135, 150, 175, 200, 250])
   };
   const used = { d2p: 0, p2d: 0, w2p: 0, d2w: 0 };
   return kinds.map((kind) => {
@@ -384,17 +443,42 @@ const M5_BANK = [
   { id: 'target', title: '目標の達成率', askCount: '作れた数が多いのはどちらですか。', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 40, comp: 36, unit: 'こ', text: '目標40こに対して 36こできた' }, B: { base: 50, comp: 40, unit: 'こ', text: '目標50こに対して 40こできた' }, bigger: 'A' },
   { id: 'sales', title: '売上ののび', askCount: '今年の売上金額が大きいのはどちらですか。', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
-    A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' }
+    A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' },
+  { id: 'distance', title: '進んだ道のり', askCount: '進んだ道のりが長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+    A: { base: 500, comp: 400, unit: 'm', text: '500mの道のりのうち 400m進んだ' }, B: { base: 1000, comp: 600, unit: 'm', text: '1000mの道のりのうち 600m進んだ' }, bigger: 'A' },
+  { id: 'survey', title: 'アンケート', askCount: '「はい」と答えた人数が多いのはどちらですか。', ask: '「はい」と答えた割合が大きいのはどちらですか。', aLabel: 'Aグループ', bLabel: 'Bグループ',
+    A: { base: 40, comp: 28, unit: '人', text: '40人のうち 28人が「はい」' }, B: { base: 60, comp: 36, unit: '人', text: '60人のうち 36人が「はい」' }, bigger: 'A' },
+  { id: 'plants', title: '発芽した種', askCount: '芽が出た種が多いのはどちらですか。', ask: '芽が出た割合が大きいのはどちらですか。', aLabel: 'Aの箱', bLabel: 'Bの箱',
+    A: { base: 80, comp: 40, unit: 'こ', text: '80このうち 40こに芽が出た' }, B: { base: 50, comp: 35, unit: 'こ', text: '50このうち 35こに芽が出た' }, bigger: 'B' },
+  { id: 'classvote', title: '学級の投票', askCount: '賛成した人数が多いのはどちらですか。', ask: '賛成した割合が大きいのはどちらですか。', aLabel: 'Aクラス', bLabel: 'Bクラス',
+    A: { base: 30, comp: 24, unit: '人', text: '30人のうち 24人が賛成' }, B: { base: 50, comp: 35, unit: '人', text: '50人のうち 35人が賛成' }, bigger: 'A' },
+  { id: 'recycle', title: 'リサイクル', askCount: '集めたペットボトルが多いのはどちらですか。', ask: '集めた割合が大きいのはどちらですか。', aLabel: 'A地区', bLabel: 'B地区',
+    A: { base: 40, comp: 30, unit: '本', text: '40本のうち 30本を回収' }, B: { base: 60, comp: 36, unit: '本', text: '60本のうち 36本を回収' }, bigger: 'A' },
+  { id: 'water', title: '使った水の量', askCount: '使った水の量が多いのはどちらですか。', ask: '使った割合が大きいのはどちらですか。', aLabel: 'Aのタンク', bLabel: 'Bのタンク',
+    A: { base: 200, comp: 100, unit: 'L', text: '200Lのうち 100Lを使った' }, B: { base: 150, comp: 90, unit: 'L', text: '150Lのうち 90Lを使った' }, bigger: 'B' },
+  { id: 'reading', title: '本の読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が大きいのはどちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
+    A: { base: 20, comp: 16, unit: 'ページ', text: '20ページのうち 16ページ読んだ' }, B: { base: 60, comp: 42, unit: 'ページ', text: '60ページのうち 42ページ読んだ' }, bigger: 'A' },
+  { id: 'race', title: 'マラソンの道のり', askCount: '進んだ距離が長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+    A: { base: 400, comp: 320, unit: 'm', text: '400mのコースのうち 320m進んだ' }, B: { base: 1000, comp: 600, unit: 'm', text: '1000mのコースのうち 600m進んだ' }, bigger: 'A' },
 ];
 function genM5() {
   // 5問の中に「実際の数と割合で結果が逆になる場面」を必ず1問入れる
-  const contrast = M5_BANK.filter((it) => ['attendance', 'target', 'book'].includes(it.id));
+  const contrast = M5_BANK.filter((it) => {
+    const countA = it.A.comp > it.B.comp;
+    const rateA = it.A.comp * it.B.base > it.B.comp * it.A.base;
+    return countA !== rateA;
+  });
   const seed = contrast[Math.floor(Math.random() * contrast.length)];
   const chosen = [seed, ...shuffle(M5_BANK.filter((it) => it.id !== seed.id)).slice(0, 4)];
   return shuffle(chosen).map((it) => {
     const A = Object.assign({}, it.A, { P: (it.A.comp * 100) / it.A.base });
     const B = Object.assign({}, it.B, { P: (it.B.comp * 100) / it.B.base });
-    return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger, countBigger: it.A.comp > it.B.comp ? 'A' : 'B' };
+    return {
+      mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title,
+      askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel,
+      A, B, bigger: A.P > B.P ? 'A' : 'B',
+      countBigger: A.comp > B.comp ? 'A' : 'B'
+    };
   });
 }
 function genM6() {
@@ -408,6 +492,27 @@ function genM6() {
   ]);
 }
 const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5, m6: genM6 };
+
+function generateFresh(mode) {
+  const recent = recentQuestions[mode] || [];
+  const keepCounts = { m1: 18, m2: 30, m3: 30, m4: 32, m5: 10, m6: 24 };
+  let bestList = null;
+  let bestOverlap = Infinity;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const candidate = GENERATORS[mode]();
+    const overlap = candidate.reduce((n, q) => n + (recent.includes(q.key) ? 1 : 0), 0);
+    if (overlap < bestOverlap) {
+      bestList = candidate;
+      bestOverlap = overlap;
+    }
+    if (overlap === 0) break;
+  }
+  if (!bestList) return GENERATORS[mode]();
+  recentQuestions[mode] = Array.from(new Set([...bestList.map((q) => q.key), ...recent]))
+    .slice(0, keepCounts[mode] || 24);
+  saveJSON(LS_RECENT, recentQuestions);
+  return bestList;
+}
 
 // ================= ステップ構築 =================
 function choiceStep(prompt, pairs, hint) {
@@ -529,8 +634,31 @@ function earnedBadgeIds() { return BADGES.filter((b) => b.test()).map((b) => b.i
 // ================= セッション =================
 let screen = 'home';           // home | solve | result | records
 let session = null;
+let advanceTimer = null;
+
+function cancelAdvanceTimer() {
+  if (advanceTimer !== null) clearTimeout(advanceTimer);
+  advanceTimer = null;
+  if (session) session.advancePending = false;
+}
+function scheduleAdvance() {
+  if (!session || session.advancePending) return;
+  session.advancePending = true;
+  const targetSession = session;
+  const targetIdx = session.idx;
+  const targetStepIdx = session.stepIdx;
+  advanceTimer = setTimeout(() => {
+    advanceTimer = null;
+    if (session !== targetSession || !session ||
+        session.idx !== targetIdx || session.stepIdx !== targetStepIdx ||
+        session.phase !== 'steps') return;
+    session.advancePending = false;
+    advanceStep();
+  }, 620);
+}
 
 function startSession(mode, list) {
+  cancelAdvanceTimer();
   // 旧バージョンで保存されたM5の誤答記録を、現在の比較データへ更新する
   if (mode === 'tokkon') {
     list = list.map((q) => {
@@ -558,6 +686,7 @@ function startSession(mode, list) {
     inputStr: '',
     miniMsg: null,              // {kind:'ok'|'ng', text}
     phase: 'steps',             // steps | feedback
+    advancePending: false,
     correctCount: 0,
     clearedCount: 0,
     badgesBefore: earnedBadgeIds()
@@ -601,13 +730,14 @@ function finishQuestion() {
   render();
 }
 function advanceStep() {
+  cancelAdvanceTimer();
   session.miniMsg = null;
   session.inputStr = '';
   if (session.stepIdx + 1 >= session.steps.length) finishQuestion();
   else { session.stepIdx += 1; render(); }
 }
 function pickChoice(i) {
-  if (!session || session.phase !== 'steps') return;
+  if (!session || session.phase !== 'steps' || session.advancePending) return;
   const step = currentStep();
   if (!step || step.type !== 'choice') return;
   const c = step.choices[i];
@@ -615,8 +745,8 @@ function pickChoice(i) {
   playSound('click');
   if (c.ok) {
     session.miniMsg = { kind: 'ok', text: 'せいかい！' };
+    scheduleAdvance();
     render();
-    setTimeout(() => { if (session && session.phase === 'steps') advanceStep(); }, 620);
   } else {
     session.qWrong = true;
     step.pickedWrong.push(i);
@@ -646,7 +776,7 @@ function pressKey(k) {
   render();
 }
 function confirmInput() {
-  if (!session || session.phase !== 'steps') return;
+  if (!session || session.phase !== 'steps' || session.advancePending) return;
   const step = currentStep();
   if (!step || step.type !== 'input') return;
   if (!session.inputStr.trim()) {
@@ -658,8 +788,8 @@ function confirmInput() {
   const v = parseInputHundredths(session.inputStr);
   if (v !== null && v === step.expectedH) {
     session.miniMsg = { kind: 'ok', text: 'せいかい！' };
+    scheduleAdvance();
     render();
-    setTimeout(() => { if (session && session.phase === 'steps') advanceStep(); }, 620);
   } else {
     session.qWrong = true;
     session.inputStr = '';
@@ -847,6 +977,7 @@ function renderHome() {
   </section>
   <h2 class="section-title">れんしゅうを選ぼう</h2>
   <div class="mode-grid">${cards}</div>
+  <p class="foot-note">同じモードに何度も挑戦できます。前に出た問題をできるだけ避けて、新しい問題を中心に出題します。</p>
   <h2 class="section-title">記録と再挑戦</h2>
   <div class="tool-grid">
     <button class="tool-card" data-action="tokkon">
@@ -950,8 +1081,9 @@ function renderResult() {
         ? `合格！ ${required}問以上、最初から正解できました。続けて別の問題にも挑戦しよう。`
         : `あと ${remaining}問、最初から正解できると合格だよ。まちがえた問題は「とっくん」で考え方を確かめよう。`}</p>
     ${newBadges.length ? `<div class="new-badges">${newBadges.map((b) => `<span class="badge-chip">🏅 ${esc(b.label)}</span>`).join('')}</div>` : ''}
+    <p class="foot-note">次は前に出た問題をできるだけ避けて、新しい問題を中心に出題するよ。</p>
     <div class="result-actions">
-      <button class="big-btn" data-action="again">もう一度挑戦</button>
+      <button class="big-btn" data-action="again">新しい問題でもう一度</button>
       <button class="big-btn sub" data-action="home">トップへ</button>
     </div>
   </section>`;
@@ -989,9 +1121,9 @@ root.addEventListener('click', (ev) => {
   const el = ev.target.closest('[data-action]');
   if (!el) return;
   const a = el.dataset.action;
-  if (a === 'home') { screen = 'home'; session = null; render(true); }
+  if (a === 'home') { cancelAdvanceTimer(); screen = 'home'; session = null; render(true); }
   else if (a === 'sound') { settings.sound = !settings.sound; saveAll(); render(); }
-  else if (a === 'start') { const m = el.dataset.mode; startSession(m, GENERATORS[m]()); }
+  else if (a === 'start') { const m = el.dataset.mode; startSession(m, generateFresh(m)); }
   else if (a === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); }
   else if (a === 'records') { screen = 'records'; render(true); }
   else if (a === 'choice') pickChoice(Number(el.dataset.i));
@@ -1001,7 +1133,7 @@ root.addEventListener('click', (ev) => {
   else if (a === 'again') {
     if (!session) return;
     if (session.mode === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); else { screen = 'home'; render(true); } }
-    else startSession(session.mode, GENERATORS[session.mode]());
+    else startSession(session.mode, generateFresh(session.mode));
   }
 });
 
@@ -1011,7 +1143,8 @@ window.__wariai = {
   mistakes: () => JSON.parse(JSON.stringify(mistakes)),
   stats: () => JSON.parse(JSON.stringify(stats)),
   settings: () => JSON.parse(JSON.stringify(settings)),
-  session: () => session ? { mode: session.mode, idx: session.idx, total: session.list.length, phase: session.phase, stepIdx: session.stepIdx } : null,
+  session: () => session ? { mode: session.mode, idx: session.idx, total: session.list.length, phase: session.phase, stepIdx: session.stepIdx, advancePending: !!session.advancePending } : null,
+  recent: () => JSON.parse(JSON.stringify(recentQuestions)),
   current: () => {
     if (!session) return null;
     return { mode: session.q.mode, key: session.q.key, phase: session.phase, qWrong: session.qWrong };

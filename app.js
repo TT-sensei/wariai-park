@@ -519,7 +519,7 @@ function finishQuestion() {
   saveAll();
   session.phase = 'feedback';
   playSound(session.qWrong ? 'clear' : 'stageClear');
-  render(true);
+  render();
 }
 function advanceStep() {
   session.miniMsg = null;
@@ -761,8 +761,8 @@ function renderSolve() {
   const md = MODES[q.mode];
   const nv = NAVI[md.navi];
   const total = session.list.length;
-  const progress = Math.round(((session.idx + (inFeedback ? 1 : 0)) / total) * 100);
   const inFeedback = session.phase === 'feedback';
+  const progress = Math.round(((session.idx + (inFeedback ? 1 : 0)) / total) * 100);
   const step = inFeedback ? null : currentStep();
 
   let side = '';
@@ -922,4 +922,4 @@ window.__wariai = {
   }
 };
 
-render();
+render(true);

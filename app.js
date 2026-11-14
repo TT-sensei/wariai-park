@@ -170,7 +170,7 @@ function numLineSVG(o) {
   const headPts = dir > 0
     ? `${ax2},${midY} ${ax2 - 11},${midY - 6} ${ax2 - 11},${midY + 6}`
     : `${ax2},${midY} ${ax2 + 11},${midY - 6} ${ax2 + 11},${midY + 6}`;
-  const hideTarget = o.hide === 'rate';
+  const hideTarget = !!o.hide;
   const rateBottom = hideTarget ? '' : decText(o.P);
   const compTop = hideTarget ? '' : (o.hide === 'comp' ? '？' : (o.comp + o.unit));
   const baseTop = o.hide === 'base' ? '？' : (o.base + o.unit);

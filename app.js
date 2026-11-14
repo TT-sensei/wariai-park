@@ -50,9 +50,10 @@ const MODES = {
   m2: { id: 'm2', title: 'くらべる量を もとめる', navi: 'riku', color: 'var(--m2)', desc: '割合をかけると、比べる量が分かるよ（5問）' },
   m3: { id: 'm3', title: 'もとにする量を もとめる', navi: 'kai', color: 'var(--m3)', desc: '比べる量と割合から、全体をさかのぼろう（5問）' },
   m4: { id: 'm4', title: 'よみかえ', navi: 'tsuki', color: 'var(--m4)', desc: '小数・％・歩合を読み替えよう（8問）' },
-  m5: { id: 'm5', title: 'くらべる', navi: 'nami', color: 'var(--m5)', desc: 'AとB、どちらの割合が大きいかな（5問）' }
+  m5: { id: 'm5', title: 'くらべる', navi: 'nami', color: 'var(--m5)', desc: 'AとB、どちらの割合が大きいかな（5問）' },
+  m6: { id: 'm6', title: '3つの用法ミックス', navi: 'saku', color: 'var(--m6, #6476b8)', desc: '何を求める問題か、自分で見分けて解こう（6問）' }
 };
-const MODE_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5'];
+const MODE_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
 
 // ================= 保存 =================
 const LS_MISTAKES = 'wariaiPark.mistakes.v1';
@@ -362,33 +363,43 @@ function genM4() {
 }
 // ---- モード5：くらべる ----
 const M5_BANK = [
-  { id: 'juice', title: '砂糖水の こさ', ask: '砂糖の割合が 大きいのは どちらですか。', aLabel: 'Aの砂糖水', bLabel: 'Bの砂糖水',
+  { id: 'juice', title: '砂糖水の こさ', askCount: '砂糖の重さが大きいのはどちらですか。', ask: '砂糖の割合が 大きいのは どちらですか。', aLabel: 'Aの砂糖水', bLabel: 'Bの砂糖水',
     A: { base: 200, comp: 40, unit: 'g', text: '水160gに さとう40g（全体200g）' }, B: { base: 250, comp: 75, unit: 'g', text: '水175gに さとう75g（全体250g）' }, bigger: 'B' },
-  { id: 'shoot', title: 'シュートの 成功率', ask: '成功率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'shoot', title: 'シュートの 成功率', askCount: '成功した本数が多いのはどちらですか。', ask: '成功率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 20, comp: 12, unit: '本', text: '20本のうち 12本成功' }, B: { base: 25, comp: 10, unit: '本', text: '25本のうち 10本成功' }, bigger: 'A' },
-  { id: 'discount', title: '割引率', ask: '割引率が 高いのは どちらですか。', aLabel: 'Aの店', bLabel: 'Bの店',
+  { id: 'discount', title: '割引率', askCount: '割引金額が大きいのはどちらですか。', ask: '割引率が 高いのは どちらですか。', aLabel: 'Aの店', bLabel: 'Bの店',
     A: { base: 1000, comp: 200, unit: '円', text: '1000円の品物が 200円引き' }, B: { base: 800, comp: 240, unit: '円', text: '800円の品物が 240円引き' }, bigger: 'B' },
-  { id: 'book', title: '本の 読み進み', ask: '読み進んだ割合が 大きいのは どちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
+  { id: 'book', title: '本の 読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が 大きいのは どちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
     A: { base: 150, comp: 90, unit: 'ページ', text: '150ページのうち 90ページ読んだ' }, B: { base: 200, comp: 100, unit: 'ページ', text: '200ページのうち 100ページ読んだ' }, bigger: 'A' },
-  { id: 'kuji', title: 'くじの あたり率', ask: 'あたり率が 高いのは どちらですか。', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
+  { id: 'kuji', title: 'くじの あたり率', askCount: '当たりくじの本数が多いのはどちらですか。', ask: 'あたり率が 高いのは どちらですか。', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
     A: { base: 40, comp: 8, unit: '本', text: '40本のうち あたり8本' }, B: { base: 30, comp: 9, unit: '本', text: '30本のうち あたり9本' }, bigger: 'B' },
-  { id: 'test', title: 'テストの 取れた割合', ask: '取れた割合が 大きいのは どちらですか。', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
+  { id: 'test', title: 'テストの 取れた割合', askCount: '取れた点数が多いのはどちらですか。', ask: '取れた割合が 大きいのは どちらですか。', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
     A: { base: 50, comp: 40, unit: '点', text: '50点満点で 40点' }, B: { base: 40, comp: 28, unit: '点', text: '40点満点で 28点' }, bigger: 'A' },
-  { id: 'attendance', title: '参加した割合', ask: '参加した割合が 大きいのは どちらですか。', aLabel: 'Aの学年', bLabel: 'Bの学年',
+  { id: 'attendance', title: '参加した割合', askCount: '参加した人数が多いのはどちらですか。', ask: '参加した割合が 大きいのは どちらですか。', aLabel: 'Aの学年', bLabel: 'Bの学年',
     A: { base: 40, comp: 30, unit: '人', text: '40人のうち 30人が参加' }, B: { base: 30, comp: 24, unit: '人', text: '30人のうち 24人が参加' }, bigger: 'B' },
-  { id: 'target', title: '目標の達成率', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'target', title: '目標の達成率', askCount: '作れた数が多いのはどちらですか。', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 40, comp: 36, unit: 'こ', text: '目標40こに対して 36こできた' }, B: { base: 50, comp: 40, unit: 'こ', text: '目標50こに対して 40こできた' }, bigger: 'A' },
-  { id: 'sales', title: '売上ののび', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
+  { id: 'sales', title: '売上ののび', askCount: '今年の売上金額が大きいのはどちらですか。', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
     A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' }
 ];
 function genM5() {
   return shuffle(M5_BANK).slice(0, 5).map((it) => {
     const A = Object.assign({}, it.A, { P: (it.A.comp * 100) / it.A.base });
     const B = Object.assign({}, it.B, { P: (it.B.comp * 100) / it.B.base });
-    return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger };
+    return { mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title, askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, A, B, bigger: it.bigger, countBigger: it.A.comp > it.B.comp ? 'A' : 'B' };
   });
 }
-const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5 };
+function genM6() {
+  const asMix = (source, target) => Object.assign({}, source, {
+    mode: 'm6', key: 'm6-' + target + '-' + source.key, target
+  });
+  return shuffle([
+    ...genM1().slice(0, 2).map(q => asMix(q, 'rate')),
+    ...genM2().slice(0, 2).map(q => asMix(q, 'comp')),
+    ...genM3().slice(0, 2).map(q => asMix(q, 'base'))
+  ]);
+}
+const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5, m6: genM6 };
 
 // ================= ステップ構築 =================
 function choiceStep(prompt, pairs, hint) {
@@ -404,6 +415,9 @@ function buildSteps(q) {
       choiceStep('まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
         [[`${q.baseName}（${q.base}${q.unit}）`, true], [`${q.compName}（${q.comp}${q.unit}）`, false]],
         '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。'),
+      choiceStep('割合は「1」と比べて、どこにくるかな？',
+        [['0と1の間', q.P < 100], ['1と同じ', q.P === 100], ['1より大きい', q.P > 100]],
+        '下の数直線の「1」を基準にしよう。比べる量が、もとにする量より小さいか大きいか考えてね。'),
       choiceStep('割合を求める式は、どちらかな？',
         [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false]],
         '「比べる量」を「もとにする量」で割る順番だよ。二重数直線の下の段も見てみよう。'),
@@ -414,6 +428,9 @@ function buildSteps(q) {
   if (q.mode === 'm2') {
     const d = decText(q.P);
     return [
+      choiceStep('比べる量は、もとにする量と比べてどうなるかな？',
+        [['小さくなる', q.P < 100], ['同じになる', q.P === 100], ['大きくなる', q.P > 100]],
+        '割合が1より小さいときは、もとにする量の一部。1より大きいときは、もとにする量をこえるよ。'),
       choiceStep('比べる量を求める式は、どれかな？',
         [[`${q.base} × ${d}`, true], [`${q.base} ÷ ${d}`, false], [`${d} ÷ ${q.base}`, false]],
         'もとにする量を1とみると、比べる量はその何倍かな。矢印の「×割合」に注目しよう。'),
@@ -424,6 +441,9 @@ function buildSteps(q) {
   if (q.mode === 'm3') {
     const d = decText(q.P);
     return [
+      choiceStep('もとにする量は、比べる量と比べてどうなるかな？',
+        [['大きくなる', q.P < 100], ['同じになる', q.P === 100], ['小さくなる', q.P > 100]],
+        '割合が1より小さいなら、比べる量は全体の一部。もとにする量は比べる量より大きいよ。'),
       choiceStep('もとにする量を求める式は、どれかな？',
         [[`${q.comp} ÷ ${d}`, true], [`${q.comp} × ${d}`, false], [`${d} ÷ ${q.comp}`, false]],
         'もとにする量 × 割合 ＝ 比べる量。□をもとにする量にして、式を逆にたどろう。'),
@@ -434,7 +454,37 @@ function buildSteps(q) {
   if (q.mode === 'm4') {
     return [{ type: 'choice', prompt: '', hint: q.hint, choices: q.options.map((o) => ({ label: o.t, ok: o.ok })), pickedWrong: [] }];
   }
+  if (q.mode === 'm6') {
+    const targetStep = choiceStep('この問題で、求めるものは何かな？',
+      [['割合', q.target === 'rate'], ['比べる量', q.target === 'comp'], ['もとにする量', q.target === 'base']],
+      '問題文の最後を読み、まだ分かっていない量に注目しよう。');
+    const relationStep = choiceStep('比べる量は、もとにする量と比べてどうなるかな？',
+      [['小さくなる', q.P < 100], ['同じになる', q.P === 100], ['大きくなる', q.P > 100]],
+      '割合が1より小さいか、1と同じか、1より大きいかを考えよう。二重数直線の「1」が基準だよ。');
+    const d = decText(q.P);
+    let formulaPairs, answer, prompt, hint;
+    if (q.target === 'rate') {
+      formulaPairs = [[q.comp + ' ÷ ' + q.base, true], [q.base + ' ÷ ' + q.comp, false], [q.comp + ' × ' + q.base, false]];
+      answer = q.P; prompt = '割合を小数で入力しよう。';
+      hint = '割合は、比べる量をもとにする量で割って求めるよ。';
+    } else if (q.target === 'comp') {
+      formulaPairs = [[q.base + ' × ' + d, true], [q.base + ' ÷ ' + d, false], [d + ' ÷ ' + q.base, false]];
+      answer = q.comp; prompt = '比べる量を' + q.unit + 'で入力しよう。';
+      hint = 'もとにする量を1とみたときの何倍かが割合。もとにする量に割合をかけよう。';
+    } else {
+      formulaPairs = [[q.comp + ' ÷ ' + d, true], [q.comp + ' × ' + d, false], [d + ' ÷ ' + q.comp, false]];
+      answer = q.base; prompt = 'もとにする量を' + q.unit + 'で入力しよう。';
+      hint = 'もとにする量は1にあたる量。比べる量を割合で割って戻そう。';
+    }
+    const formulaStep = choiceStep('関係を式に表すと、どれかな？', formulaPairs, hint);
+    const valueStep = inputStep(prompt, answer * 100, String(answer),
+      '入力した答えを、もとの場面に戻して確かめよう。');
+    return [targetStep, relationStep, formulaStep, valueStep];
+  }
   // m5
+  const rawCompare = choiceStep(q.askCount,
+    [[q.aLabel, q.countBigger === 'A'], [q.bLabel, q.countBigger === 'B']],
+    'まずは実際の数を比べるよ。このあと、もとにする量が違うときは割合でも比べてみよう。');
   const fA = choiceStep(`${q.aLabel} の割合を求める式は、どちらかな？`,
     [[`${q.A.comp} ÷ ${q.A.base}`, true], [`${q.A.base} ÷ ${q.A.comp}`, false]], 'まず、それぞれの「もとにする量」を見つけよう。分母にくる量を取り違えないでね。');
   const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P),
@@ -446,7 +496,7 @@ function buildSteps(q) {
   const cmp = choiceStep(q.ask,
     [[q.aLabel, q.bigger === 'A'], [q.bLabel, q.bigger === 'B']],
     '同じ1を基準にそろえて、割合を比べよう。量そのものの大きさだけで決めないことがポイントだよ。');
-  return [fA, iA, fB, iB, cmp];
+  return [rawCompare, fA, iA, fB, iB, cmp];
 }
 
 // ================= バッジ =================
@@ -456,6 +506,7 @@ const BADGES = [
   { id: 'clear-m3', label: 'もとにする量マスター', test: () => stats.modes.m3.mastered },
   { id: 'clear-m4', label: 'よみかえマスター', test: () => stats.modes.m4.mastered },
   { id: 'clear-m5', label: 'くらべるマスター', test: () => stats.modes.m5.mastered },
+  { id: 'clear-m6', label: '3つの用法マスター', test: () => stats.modes.m6.mastered },
   { id: 'clear-all', label: '全モードマスター', test: () => MODE_ORDER.every((m) => stats.modes[m].mastered) },
   { id: 'tokkon-1', label: 'とっくん克服 1件', test: () => stats.tokkonClearedTotal >= 1 },
   { id: 'tokkon-5', label: 'とっくん克服 5件', test: () => stats.tokkonClearedTotal >= 5 },
@@ -630,7 +681,7 @@ function figureFor(q, revealed) {
       numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', compact: true }) +
       '</div>';
   }
-  const hide = revealed ? null : (q.mode === 'm1' ? 'rate' : q.mode === 'm2' ? 'comp' : 'base');
+  const hide = revealed ? null : (q.mode === 'm1' ? 'rate' : q.mode === 'm2' ? 'comp' : q.mode === 'm6' ? (q.target === 'rate' ? 'rate' : q.target === 'comp' ? 'comp' : 'base') : 'base');
   return `<div class="fig-box">` + numLineSVG({ base: q.base, comp: q.comp, P: q.P, unit: q.unit, hide }) + '</div>';
 }
 function questionText(q) {
@@ -643,6 +694,7 @@ function naviComment(q) {
   if (q.mode === 'm2') return '矢印は「×割合」。1の位置から引っ張ってみよう。';
   if (q.mode === 'm3') return '比べる量から、わり算で さかのぼるよ。';
   if (q.mode === 'm4') return '小数も％も歩合も、もとは「100分のいくつ」だよ。';
+  if (q.mode === 'm6') return '何を求める問題かを見きわめて、3つの関係を使い分けよう。';
   return 'AとB、それぞれ割合を出してから比べよう。';
 }
 function explainFor(q) {
@@ -677,10 +729,32 @@ function explainFor(q) {
       concept: '小数・百分率・歩合は、同じ割合を別の表し方にしたもの。1、0.1、0.01の関係をもとに考えよう。'
     };
   }
+  if (q.mode === 'm6') {
+    const d = decText(q.P);
+    if (q.target === 'rate') return {
+      main: '割合 ＝ 比べる量 ÷ もとにする量 だから、' + q.comp + ' ÷ ' + q.base + ' ＝ ' + d + ' です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp,
+      concept: 'もとにする量を1とみたとき、比べる量がどれだけにあたるかを求めたよ。'
+    };
+    if (q.target === 'comp') return {
+      main: '比べる量 ＝ もとにする量 × 割合 だから、' + q.base + ' × ' + d + ' ＝ ' + q.comp + ' です。',
+      check: q.comp + ' ÷ ' + q.base + ' ＝ ' + d,
+      concept: 'もとにする量を1としたときの何倍かを使って、比べる量を求めたよ。'
+    };
+    return {
+      main: 'もとにする量 ＝ 比べる量 ÷ 割合 だから、' + q.comp + ' ÷ ' + d + ' ＝ ' + q.base + ' です。',
+      check: d + ' × ' + q.base + ' ＝ ' + q.comp,
+      concept: '比べる量から、割合で割って「1」にあたるもとにする量へ戻ったよ。'
+    };
+  }
+  const countWinner = q.countBigger === 'A' ? q.aLabel : q.bLabel;
+  const rateWinner = q.bigger === 'A' ? q.aLabel : q.bLabel;
   return {
-    main: q.aLabel + ' の割合は ' + q.A.comp + ' ÷ ' + q.A.base + ' ＝ ' + decText(q.A.P) + '、' + q.bLabel + ' の割合は ' + q.B.comp + ' ÷ ' + q.B.base + ' ＝ ' + decText(q.B.P) + '。だから、割合が大きいのは ' + (q.bigger === 'A' ? q.aLabel : q.bLabel) + ' です。',
-    check: '比べるときは、量そのものではなく「割合」で比べるのがポイントです。',
-    concept: 'もとにする量の大きさが違うときは、どちらも1とみてそろえると、公平に比べられるよ。'
+    main: '実際の数を比べると、' + countWinner + ' の方が多いね。一方、割合は ' + q.aLabel + ' が ' + decText(q.A.P) + '、' + q.bLabel + ' が ' + decText(q.B.P) + '。割合が大きいのは ' + rateWinner + ' です。',
+    check: q.A.comp + ' と ' + q.B.comp + '（実際の数） ／ ' + decText(q.A.P) + ' と ' + decText(q.B.P) + '（割合）',
+    concept: q.countBigger === q.bigger
+      ? '実際の数と割合の両方で、同じ方が大きかったね。比べるものをはっきりさせることが大切だよ。'
+      : '実際の数が多いことと、割合が大きいことは同じではないよ。もとにする量を1にそろえて比べる必要があるんだね。'
   };
 }
 

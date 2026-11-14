@@ -1,4 +1,4 @@
-/* 割合パーク style.css — 明るい背景・白い角丸カード・大きなボタン（タブレット優先） */
+/* 割合ステップ style.css — 明るい背景・白い角丸カード・大きなボタン（タブレット優先） */
 :root{
   --ink:#33302b;
   --sub:#6f6a5e;
@@ -121,6 +121,8 @@ img{user-select:none;-webkit-user-drag:none}
   margin-top:12px;background:#f4fbfa;border:2px solid #cfe8e2;border-radius:16px;padding:8px 10px 4px;
 }
 .fig-box svg{display:block;width:100%;height:auto}
+.fig-box-m5{padding:6px 10px 2px}
+.fig-box-m5 svg{width:93%;margin:0 auto}
 .fig-cap{font-size:13px;color:#8a8172;text-align:center;margin:2px 0 4px}
 .side-panel{display:flex;flex-direction:column;gap:12px}
 .panel-card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:0 2px 10px rgba(199,80,15,.08)}

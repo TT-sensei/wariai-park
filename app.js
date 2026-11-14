@@ -1,5 +1,5 @@
 'use strict';
-/* 割合パーク（小学5年・算数）
+/* 割合ステップ（小学5年・算数）
    - 割合＝比べる量÷もとにする量 を、二重数直線とステップ式で練習する。
    - 図の肝：もとにする量の位置に「1」を置き、そこから比べる量の位置まで
      矢印がアニメーションで伸びる（ラベルは「×割合」）。
@@ -830,7 +830,7 @@ function figureFor(q, revealState) {
   if (q.mode === 'm5') {
     const aDone = revealState === 2 || session.stepIdx >= 3;
     const bDone = revealState === 2 || session.stepIdx >= 5;
-    return `<div class="fig-box"><div class="fig-cap">${esc(q.aLabel)}</div>` +
+    return `<div class="fig-box fig-box-m5"><div class="fig-cap">${esc(q.aLabel)}</div>` +
       numLineSVG({ base: q.A.base, comp: q.A.comp, P: q.A.P, unit: q.A.unit, hide: aDone ? null : 'rate', suppressRelation: !aDone, compact: true }) +
       `<div class="fig-cap">${esc(q.bLabel)}</div>` +
       numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', suppressRelation: !bDone, compact: true }) +
@@ -920,7 +920,7 @@ function headerHTML() {
   return `<header class="app-header">
     <button class="app-brand" data-action="home" aria-label="トップへ">
       <span class="brand-mark">％</span>
-      <span><strong>割合パーク</strong><small>TT-sensei · 小学5年 算数</small></span>
+      <span><strong>割合ステップ</strong><small>TT-sensei · 小学5年 算数</small></span>
     </button>
     <div class="header-actions">
       ${screen !== 'home' ? '<button class="pill-btn" data-action="home">トップへ</button>' : ''}

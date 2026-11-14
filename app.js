@@ -485,7 +485,8 @@ function buildSteps(q) {
       hint = 'もとにする量は1にあたる量。比べる量を割合で割って戻そう。';
     }
     const formulaStep = choiceStep('関係を式に表すと、どれかな？', formulaPairs, hint);
-    const valueStep = inputStep(prompt, answer * 100, String(answer),
+    const valueStep = inputStep(prompt, q.target === 'rate' ? q.P : answer * 100,
+      q.target === 'rate' ? decText(q.P) : String(answer),
       '入力した答えを、もとの場面に戻して確かめよう。');
     return [targetStep, relationStep, formulaStep, valueStep];
   }

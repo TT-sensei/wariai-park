@@ -75,6 +75,7 @@ let stats = loadJSON(LS_STATS, null);
 if (!stats || typeof stats !== 'object') {
   stats = { modes: {}, totalCorrect: 0, tokkonClearedTotal: 0 };
 }
+if (!stats.modes || typeof stats.modes !== 'object' || Array.isArray(stats.modes)) stats.modes = {};
 for (const m of MODE_ORDER) {
   if (!stats.modes[m]) stats.modes[m] = { played: 0, answered: 0, correct: 0, mastered: false };
   if (typeof stats.modes[m].mastered !== 'boolean') stats.modes[m].mastered = false;
@@ -262,9 +263,9 @@ const M23_SCENES = [
     m3: (c, r) => '工作で ' + c + 'こできました。これは目標の ' + r + ' です。目標は何こでしたか。'
   },
   {
-    unit: '円',
-    m2: (b, r) => '先月の売上は ' + b + '円でした。今月は先月の ' + r + ' です。今月の売上は何円ですか。',
-    m3: (c, r) => '今月の売上は ' + c + '円で、先月の売上の ' + r + ' です。先月は何円でしたか。'
+    unit: '万円',
+    m2: (b, r) => '先月の売上は ' + b + '万円でした。今月は先月の ' + r + ' です。今月の売上は何万円ですか。',
+    m3: (c, r) => '今月の売上は ' + c + '万円で、先月の売上の ' + r + ' です。先月は何万円でしたか。'
   },
   {
     unit: 'ページ',
@@ -378,7 +379,7 @@ const M5_BANK = [
   { id: 'target', title: '目標の達成率', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 40, comp: 36, unit: 'こ', text: '目標40こに対して 36こできた' }, B: { base: 50, comp: 40, unit: 'こ', text: '目標50こに対して 40こできた' }, bigger: 'A' },
   { id: 'sales', title: '売上ののび', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
-    A: { base: 200, comp: 260, unit: '円', text: '去年200円、今年260円' }, B: { base: 150, comp: 180, unit: '円', text: '去年150円、今年180円' }, bigger: 'A' }
+    A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' }
 ];
 function genM5() {
   return shuffle(M5_BANK).slice(0, 5).map((it) => {

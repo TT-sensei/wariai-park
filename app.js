@@ -403,7 +403,7 @@ function buildSteps(q) {
     return [
       choiceStep('まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
         [[`${q.baseName}（${q.base}${q.unit}）`, true], [`${q.compName}（${q.comp}${q.unit}）`, false]],
-        '全体を1とみるよ。比べる量より大きい、もとの集まりはどれかな？'),
+        '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。'),
       choiceStep('割合を求める式は、どちらかな？',
         [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false]],
         '「比べる量」を「もとにする量」で割る順番だよ。二重数直線の下の段も見てみよう。'),

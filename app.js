@@ -436,13 +436,15 @@ function buildSteps(q) {
   // m5
   const fA = choiceStep(`${q.aLabel} の割合を求める式は、どちらかな？`,
     [[`${q.A.comp} ÷ ${q.A.base}`, true], [`${q.A.base} ÷ ${q.A.comp}`, false]], 'まず、それぞれの「もとにする量」を見つけよう。分母にくる量を取り違えないでね。');
-  const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P), '');
+  const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P),
+    'もとにする量を1とみたときの大きさを、小数で表そう。1より大きいか小さいかも確かめてね。');
   const fB = choiceStep(`${q.bLabel} の割合を求める式は、どちらかな？`,
-    [[`${q.B.comp} ÷ ${q.B.base}`, true], [`${q.B.base} ÷ ${q.B.comp}`, false]], '割合 ＝ 比べる量 ÷ もとにする量 だよ。');
-  const iB = inputStep(`${q.bLabel} の割合を、小数で入力しよう。`, q.B.P, decText(q.B.P), '');
+    [[`${q.B.comp} ÷ ${q.B.base}`, true], [`${q.B.base} ÷ ${q.B.comp}`, false]], 'Aと同じように「比べる量 ÷ もとにする量」。2つの式を同じ向きでそろえよう。');
+  const iB = inputStep(`${q.bLabel} の割合を、小数で入力しよう。`, q.B.P, decText(q.B.P),
+    'もとにする量を1とみたときの大きさを、小数で表そう。Aと同じ位取りでそろえてね。');
   const cmp = choiceStep(q.ask,
     [[q.aLabel, q.bigger === 'A'], [q.bLabel, q.bigger === 'B']],
-    `割合は、Aが ${decText(q.A.P)}、Bが ${decText(q.B.P)} だったね。`);
+    '同じ1を基準にそろえて、割合を比べよう。量そのものの大きさだけで決めないことがポイントだよ。');
   return [fA, iA, fB, iB, cmp];
 }
 

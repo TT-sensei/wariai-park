@@ -531,6 +531,22 @@ let screen = 'home';           // home | solve | result | records
 let session = null;
 
 function startSession(mode, list) {
+  // 旧バージョンで保存されたM5の誤答記録を、現在の比較データへ更新する
+  if (mode === 'tokkon') {
+    list = list.map((q) => {
+      if (!q || q.mode !== 'm5' || !q.id) return q;
+      const current = M5_BANK.find((item) => item.id === q.id);
+      if (!current) return q;
+      const A = Object.assign({}, current.A, { P: (current.A.comp * 100) / current.A.base });
+      const B = Object.assign({}, current.B, { P: (current.B.comp * 100) / current.B.base });
+      return Object.assign({}, q, {
+        title: current.title, askCount: current.askCount, ask: current.ask,
+        aLabel: current.aLabel, bLabel: current.bLabel, A, B,
+        bigger: current.bigger,
+        countBigger: current.A.comp > current.B.comp ? 'A' : 'B'
+      });
+    });
+  }
   session = {
     mode,                       // 'm1'..'m5' | 'tokkon'
     list,

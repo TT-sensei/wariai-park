@@ -170,9 +170,9 @@ function numLineSVG(o) {
   let s = '';
   s += `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="二重数直線">`;
   // ガイド（対応する位置を結ぶ破線）
-  s += `<line x1="${x0}" y1="${topY}" x2="${x0}" y2="${botY}" stroke="#e8ddc9" stroke-width="1.5" stroke-dasharray="3 4"/>`;
-  s += `<line x1="${x1}" y1="${topY - 16}" x2="${x1}" y2="${botY}" stroke="#f3b98a" stroke-width="1.5" stroke-dasharray="3 4"/>`;
-  s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#e8ddc9" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  s += `<line x1="${x0}" y1="${topY}" x2="${x0}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  s += `<line x1="${x1}" y1="${topY - 16}" x2="${x1}" y2="${botY}" stroke="#7fc4b8" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  s += `<line x1="${xr}" y1="${topY}" x2="${xr}" y2="${botY}" stroke="#d8e6e1" stroke-width="1.5" stroke-dasharray="3 4"/>`;
   // 2本の線
   s += `<line x1="${L - 8}" y1="${topY}" x2="${R + 8}" y2="${topY}" stroke="#8a8172" stroke-width="2.5"/>`;
   s += `<line x1="${L - 8}" y1="${botY}" x2="${R + 8}" y2="${botY}" stroke="#8a8172" stroke-width="2.5"/>`;
@@ -183,18 +183,18 @@ function numLineSVG(o) {
   s += tick(x0); s += tick(x1); s += tick(xr);
   // 上段ラベル（量）
   s += `<text x="${x0}" y="${topY - 12}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
-  s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#b0762a" text-anchor="middle" font-weight="700">もとにする量</text>`;
+  s += `<text x="${x1}" y="${topY - 26}" font-size="11.5" fill="#0a6b5e" text-anchor="middle" font-weight="700">もとにする量</text>`;
   s += `<text x="${x1}" y="${topY - 10}" font-size="16.5" fill="#33302b" text-anchor="middle" font-weight="800">${esc(baseTop)}</text>`;
-  s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#c7500f" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
+  s += `<text x="${xr}" y="${topY - 10}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(compTop)}</text>`;
   // 下段ラベル（割合）
   s += `<text x="${x0}" y="${botY + 20}" font-size="13" fill="#8a8172" text-anchor="middle">0</text>`;
-  s += `<circle cx="${x1}" cy="${botY + 14}" r="13.5" fill="#fff0df" stroke="#ef6c2a" stroke-width="2.5"/>`;
-  s += `<text x="${x1}" y="${botY + 20}" font-size="17" fill="#c7500f" text-anchor="middle" font-weight="800">1</text>`;
-  s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#c7500f" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
+  s += `<circle cx="${x1}" cy="${botY + 14}" r="13.5" fill="#e2f4f0" stroke="#0e8a7a" stroke-width="2.5"/>`;
+  s += `<text x="${x1}" y="${botY + 20}" font-size="17" fill="#0a6b5e" text-anchor="middle" font-weight="800">1</text>`;
+  s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
   // 矢印（1 の位置から比べる量の位置へ伸びる）
-  s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#ef6c2a" stroke-width="4" stroke-linecap="round"/>`;
-  s += `<polygon class="nl-head" points="${headPts}" fill="#ef6c2a"/>`;
-  s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#ef6c2a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
+  s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
+  s += `<polygon class="nl-head" points="${headPts}" fill="#0e8a7a"/>`;
+  s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#0e8a7a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
   s += '</svg>';
   return s;
 }

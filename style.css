@@ -182,7 +182,7 @@ img{user-select:none;-webkit-user-drag:none}
 .result-actions{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .result-actions .big-btn{width:auto;min-width:180px}
 .records-card h2{margin:0 0 12px;font-size:22px}
-.rec-table{width:100%;border-collapse:collapse;font-size:16.5px}
+.rec-table{width:100%;min-width:720px;border-collapse:collapse;font-size:16.5px}
 .rec-table th,.rec-table td{border-bottom:2px solid #ddeae6;padding:9px 8px;text-align:center}
 .rec-table th:first-child,.rec-table td:first-child{text-align:left}
 .badge-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}

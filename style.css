@@ -158,6 +158,19 @@ img{user-select:none;-webkit-user-drag:none}
 .mini-msg{min-height:26px;font-size:16.5px;font-weight:800;margin:2px 0 0;line-height:1.45}
 .mini-msg.ok{color:var(--ok)}
 .mini-msg.ng{color:var(--ng)}
+.help-btn{
+  margin-top:10px;width:100%;min-height:52px;border-radius:16px;
+  border:3px solid var(--primary);background:var(--primary-soft);color:var(--primary-deep);
+  font-size:18px;font-weight:800;
+}
+.help-btn:active{transform:translateY(1px)}
+.help-bubble{
+  margin-top:10px;display:flex;gap:10px;align-items:center;
+  background:#fdf6e0;border:2px solid #ecd9a8;border-radius:14px;padding:8px 12px;
+}
+.help-bubble img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#fff;flex:0 0 auto}
+.help-bubble p{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.help-bubble b{font-size:21px;color:var(--primary-deep)}
 
 /* ---------- フィードバック ---------- */
 .feedback{

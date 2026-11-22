@@ -86,9 +86,17 @@ for (const m of MODE_ORDER) {
   if (!Number.isFinite(stats.modes[m].played)) stats.modes[m].played = 0;
   if (!Number.isFinite(stats.modes[m].answered)) stats.modes[m].answered = 0;
   if (!Number.isFinite(stats.modes[m].correct)) stats.modes[m].correct = 0;
+  if (!Number.isFinite(stats.modes[m].helped)) stats.modes[m].helped = 0;
 }
 if (!Number.isFinite(stats.totalCorrect)) stats.totalCorrect = 0;
 if (!Number.isFinite(stats.tokkonClearedTotal)) stats.tokkonClearedTotal = 0;
+if (!Number.isFinite(stats.totalHelped)) stats.totalHelped = 0;
+if (!stats.shiki || typeof stats.shiki !== 'object' || Array.isArray(stats.shiki)) {
+  stats.shiki = { sessions: 0, answered: 0, correct: 0 };
+}
+for (const k of ['sessions', 'answered', 'correct']) {
+  if (!Number.isFinite(stats.shiki[k])) stats.shiki[k] = 0;
+}
 let settings = loadJSON(LS_SETTINGS, { sound: true });
 if (typeof settings.sound !== 'boolean') settings.sound = true;
 let recentQuestions = loadJSON(LS_RECENT, {});
@@ -557,6 +565,14 @@ function genM6() {
   ]);
 }
 const GENERATORS = { m1: genM1, m2: genM2, m3: genM3, m4: genM4, m5: genM5, m6: genM6 };
+// ---- しきだけ れんしゅう：m1・m2・m3 の場面を混ぜて10問 ----
+function genShiki() {
+  return shuffle([
+    ...genM1().slice(0, 4),
+    ...genM2().slice(0, 3),
+    ...genM3().slice(0, 3)
+  ]);
+}
 
 function generateFresh(mode) {
   const recent = recentQuestions[mode] || [];
@@ -584,8 +600,8 @@ function choiceStep(prompt, pairs, hint) {
   return { type: 'choice', prompt, hint: hint || '',
     choices: shuffle(pairs.map((p) => ({ label: p[0], ok: !!p[1] }))), pickedWrong: [] };
 }
-function inputStep(prompt, expectedH, expectedText, hint) {
-  return { type: 'input', prompt, hint: hint || '', expectedH, expectedText };
+function inputStep(prompt, expectedH, expectedText, hint, answerLabel) {
+  return { type: 'input', prompt, hint: hint || '', expectedH, expectedText, answerLabel: answerLabel || expectedText };
 }
 // 入口ステップ：「1とみる量（もとにする量）」を自分で選ぶ。
 // 間違えたら、その場で理由のヒントを見て選び直せる（考えるためのステップ）。
@@ -617,7 +633,7 @@ function buildSteps(q) {
         [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false]],
         '「比べる量」を「もとにする量」で割る順番だよ。二重数直線の下の段も見てみよう。'),
       inputStep('割合を、小数で入力しよう。', q.P, decText(q.P),
-        '割合は、もとにする量を1とみたときの大きさ。1より小さいか、大きいかも確かめよう。')
+        '割合は、もとにする量を1とみたときの大きさ。1より小さいか、大きいかも確かめよう。', decText(q.P))
     ];
   }
   if (q.mode === 'm2') {
@@ -631,7 +647,7 @@ function buildSteps(q) {
         [[`${q.base} × ${d}`, true], [`${q.base} ÷ ${d}`, false], [`${d} ÷ ${q.base}`, false]],
         'もとにする量を1とみると、比べる量はその何倍かな。矢印の「×割合」に注目しよう。'),
       inputStep(`比べる量は、何${q.unit}ですか。`, q.comp * 100, String(q.comp),
-        '割合をかけると、1より小さい割合ならもとの量より小さく、1より大きければ大きくなるよ。')
+        '割合をかけると、1より小さい割合ならもとの量より小さく、1より大きければ大きくなるよ。', q.comp + q.unit)
     ];
   }
   if (q.mode === 'm3') {
@@ -645,7 +661,7 @@ function buildSteps(q) {
         [[`${q.comp} ÷ ${d}`, true], [`${q.comp} × ${d}`, false], [`${d} ÷ ${q.comp}`, false]],
         'もとにする量 × 割合 ＝ 比べる量。□をもとにする量にして、式を逆にたどろう。'),
       inputStep(`もとにする量は、何${q.unit}ですか。`, q.base * 100, String(q.base),
-        '求めたいのは「1」にあたる量。比べる量を割合で割ると、もとにする量に戻れるよ。')
+        '求めたいのは「1」にあたる量。比べる量を割合で割ると、もとにする量に戻れるよ。', q.base + q.unit)
     ];
   }
   if (q.mode === 'm4') {
@@ -676,7 +692,8 @@ function buildSteps(q) {
     const formulaStep = choiceStep('関係を式に表すと、どれかな？', formulaPairs, hint);
     const valueStep = inputStep(prompt, q.target === 'rate' ? q.P : answer * 100,
       q.target === 'rate' ? decText(q.P) : String(answer),
-      '入力した答えを、もとの場面に戻して確かめよう。');
+      '入力した答えを、もとの場面に戻して確かめよう。',
+      q.target === 'rate' ? decText(q.P) : String(answer) + q.unit);
     const steps = q.baseName ? [baseChoiceStep(q)] : [];
     steps.push(targetStep, relationStep, formulaStep, valueStep);
     return steps;
@@ -688,11 +705,11 @@ function buildSteps(q) {
   const fA = choiceStep(`${q.aLabel} の割合を求める式は、どちらかな？`,
     [[`${q.A.comp} ÷ ${q.A.base}`, true], [`${q.A.base} ÷ ${q.A.comp}`, false]], 'まず、それぞれの「もとにする量」を見つけよう。分母にくる量を取り違えないでね。');
   const iA = inputStep(`${q.aLabel} の割合を、小数で入力しよう。`, q.A.P, decText(q.A.P),
-    'もとにする量を1とみたときの大きさを、小数で表そう。1より大きいか小さいかも確かめてね。');
+    'もとにする量を1とみたときの大きさを、小数で表そう。1より大きいか小さいかも確かめてね。', decText(q.A.P));
   const fB = choiceStep(`${q.bLabel} の割合を求める式は、どちらかな？`,
     [[`${q.B.comp} ÷ ${q.B.base}`, true], [`${q.B.base} ÷ ${q.B.comp}`, false]], 'Aと同じように「比べる量 ÷ もとにする量」。2つの式を同じ向きでそろえよう。');
   const iB = inputStep(`${q.bLabel} の割合を、小数で入力しよう。`, q.B.P, decText(q.B.P),
-    'もとにする量を1とみたときの大きさを、小数で表そう。Aと同じ位取りでそろえてね。');
+    'もとにする量を1とみたときの大きさを、小数で表そう。Aと同じ位取りでそろえてね。', decText(q.B.P));
   const cmp = choiceStep(q.ask,
     [[q.aLabel, q.bigger === 'A'], [q.bLabel, q.bigger === 'B']],
     '同じ1を基準にそろえて、割合を比べよう。量そのものの大きさだけで決めないことがポイントだよ。');
@@ -702,6 +719,26 @@ function buildSteps(q) {
   if (q.baseName) steps.push(baseChoiceStepM5(q, 'B'));
   steps.push(fB, iB, cmp);
   return steps;
+}
+
+// しきだけ れんしゅうのステップ：「1とみる量」を決める → 式を選ぶ、の2つだけ。
+function buildShikiSteps(q) {
+  const d = decText(q.P);
+  let formulaPairs, hint;
+  if (q.mode === 'm1') {
+    formulaPairs = [[`${q.comp} ÷ ${q.base}`, true], [`${q.base} ÷ ${q.comp}`, false], [`${q.comp} × ${q.base}`, false]];
+    hint = '割合は「比べる量 ÷ もとにする量」。矢印は比べる量から「1」へ向かう わり算だよ。';
+  } else if (q.mode === 'm2') {
+    formulaPairs = [[`${q.base} × ${d}`, true], [`${q.base} ÷ ${d}`, false], [`${d} ÷ ${q.base}`, false]];
+    hint = '比べる量は「もとにする量 × 割合」。矢印は「1」から比べる量へ伸びる かけ算だよ。';
+  } else {
+    formulaPairs = [[`${q.comp} ÷ ${d}`, true], [`${q.comp} × ${d}`, false], [`${d} ÷ ${q.comp}`, false]];
+    hint = 'もとにする量は「比べる量 ÷ 割合」。矢印は比べる量から「1」へ戻る わり算だよ。';
+  }
+  return [
+    baseChoiceStep(q),
+    choiceStep('式は、どれかな？', formulaPairs, hint)
+  ];
 }
 
 // ================= バッジ =================
@@ -774,11 +811,15 @@ function startSession(mode, list) {
     steps: null,
     q: null,
     qWrong: false,
+    qHelped: false,             // この問題で「ナビに計算をたのむ」を使ったか
+    helpSteps: {},              // 計算をたのんでもらった入力ステップ（stepIdx → true）
+    helpText: null,             // ナビが見せた計算の結果
     inputStr: '',
     miniMsg: null,              // {kind:'ok'|'ng', text}
     phase: 'steps',             // steps | feedback
     advancePending: false,
     correctCount: 0,
+    helpedCount: 0,
     clearedCount: 0,
     badgesBefore: earnedBadgeIds()
   };
@@ -789,9 +830,12 @@ function startSession(mode, list) {
 }
 function setupQuestion() {
   session.q = session.list[session.idx];
-  session.steps = buildSteps(session.q);
+  session.steps = session.mode === 'shiki' ? buildShikiSteps(session.q) : buildSteps(session.q);
   session.stepIdx = 0;
   session.qWrong = false;
+  session.qHelped = false;
+  session.helpSteps = {};
+  session.helpText = null;
   session.inputStr = '';
   session.miniMsg = null;
   session.phase = 'steps';
@@ -800,15 +844,36 @@ function currentStep() { return session.steps[session.stepIdx]; }
 
 function finishQuestion() {
   const q = session.q;
+  // しきだけ れんしゅうは、既存モードの判定・間違い記録には影響させない
+  if (session.mode === 'shiki') {
+    stats.shiki.answered += 1;
+    if (!session.qWrong) {
+      stats.shiki.correct += 1;
+      session.correctCount += 1;
+    }
+    saveAll();
+    session.phase = 'feedback';
+    playSound(session.qWrong ? 'clear' : 'stageClear');
+    render();
+    return;
+  }
   const st = stats.modes[q.mode];
   st.answered += 1;
-  if (!session.qWrong) {
+  // ナビに計算をたすけてもらった問題は、間違い記録に入れず、
+  // 「最初から自力で正解」にも数えない（学習記録で区別する）。
+  const helped = !!session.qHelped;
+  if (helped) {
+    st.helped += 1;
+    stats.totalHelped += 1;
+    session.helpedCount += 1;
+  }
+  if (!session.qWrong && !helped) {
     st.correct += 1;
     stats.totalCorrect += 1;
     session.correctCount += 1;
   }
   if (session.mode === 'tokkon') {
-    if (!session.qWrong && removeMistake(q.key)) {
+    if (!session.qWrong && !helped && removeMistake(q.key)) {
       stats.tokkonClearedTotal += 1;
       session.clearedCount += 1;
     }
@@ -823,6 +888,7 @@ function finishQuestion() {
 function advanceStep() {
   cancelAdvanceTimer();
   session.miniMsg = null;
+  session.helpText = null;
   session.inputStr = '';
   if (session.stepIdx + 1 >= session.steps.length) finishQuestion();
   else { session.stepIdx += 1; render(); }
@@ -882,17 +948,34 @@ function confirmInput() {
     scheduleAdvance();
     render();
   } else {
-    session.qWrong = true;
+    // ナビに計算をたすけてもらったステップでは、写し間違いを「まちがえた」扱いにしない
+    const helpedHere = !!session.helpSteps[session.stepIdx];
+    if (!helpedHere) session.qWrong = true;
     session.inputStr = '';
-    session.miniMsg = { kind: 'ng', text: 'おしい！もう一度 考えてみよう。' };
+    session.miniMsg = { kind: 'ng', text: helpedHere ? 'おしい！ナビが見せてくれた答えを、よく見て入力してみよう。' : 'おしい！もう一度 考えてみよう。' };
     playSound('wrong');
     render();
   }
 }
+// 「ナビに計算をたのむ」：計算の結果だけを見せる。式や考え方は子どもが自分で考える。
+// 答えは自動入力せず、子どもが自分で入力して答え合わせする。
+function askHelp() {
+  if (!session || session.phase !== 'steps' || session.advancePending) return;
+  const step = currentStep();
+  if (!step || step.type !== 'input') return;
+  session.qHelped = true;
+  session.helpSteps[session.stepIdx] = true;
+  session.helpText = step.answerLabel || step.expectedText;
+  playSound('click');
+  render();
+}
 function nextQuestion() {
   if (!session) return;
   if (session.idx + 1 >= session.list.length) {
-    if (session.mode !== 'tokkon') {
+    if (session.mode === 'shiki') {
+      stats.shiki.sessions += 1;
+      saveAll();
+    } else if (session.mode !== 'tokkon') {
       const required = Math.ceil(session.list.length * 0.8);
       const passed = session.correctCount >= required;
       const st = stats.modes[session.mode];
@@ -1074,7 +1157,13 @@ function renderHome() {
     </div>
   </section>
   <h2 class="section-title">れんしゅうを選ぼう</h2>
-  <div class="mode-grid">${cards}</div>
+  <div class="mode-grid">${cards}
+    <button class="mode-card" data-action="shiki">
+      <span class="mode-dot" style="background:var(--primary)"></span>
+      <img class="navi-face" src="${NAVI.saku.hint}" alt="さく">
+      <span><b>しきだけ れんしゅう</b><small>「1とみる量」と式だけを、10問すばやく練習しよう${stats.shiki.sessions ? `（今までに ${stats.shiki.sessions}回・${stats.shiki.correct}問正解）` : ''}</small></span>
+    </button>
+  </div>
   <p class="foot-note">同じモードに何度も挑戦できます。前に出た問題をできるだけ避けて、新しい問題を中心に出題します。</p>
   <h2 class="section-title">記録と再挑戦</h2>
   <div class="tool-grid">
@@ -1092,12 +1181,16 @@ function renderHome() {
 function renderSolve() {
   const q = session.q;
   const isTokkon = session.mode === 'tokkon';
+  const isShiki = session.mode === 'shiki';
   const md = MODES[q.mode];
   const nv = NAVI[md.navi];
   const total = session.list.length;
   const inFeedback = session.phase === 'feedback';
   const progress = Math.round(((session.idx + (inFeedback ? 1 : 0)) / total) * 100);
   const step = inFeedback ? null : currentStep();
+  const revealState = inFeedback ? 2
+    : isShiki ? (session.stepIdx >= 1 ? 1 : 0)
+    : (q.mode !== 'm5' && session.stepIdx >= session.steps.length - 2 ? 1 : 0);
 
   let side = '';
   if (inFeedback) {
@@ -1108,6 +1201,7 @@ function renderSolve() {
         <img src="${ok ? nv.happy : nv.troubled}" alt="">
         <div><p class="fb-title">${ok ? '正解！' : 'がんばったね'}</p><p>${esc(ex.main)}</p></div>
       </div>
+      ${session.qHelped ? `<div class="check-line">この問題は ${nv.name} に計算をたすけてもらったよ。式は自分で考えられたね。</div>` : ''}
       ${ex.check ? `<div class="check-line">${esc(ex.check)}</div>` : ''}
       ${ex.concept ? `<div class="concept-note"><strong>考え方をふり返ろう</strong><p>${esc(ex.concept)}</p></div>` : ''}
       <div style="margin-top:12px"><button class="big-btn" data-action="next">${session.idx + 1 >= total ? '結果を見る' : 'つぎへ →'}</button></div>
@@ -1125,12 +1219,14 @@ function renderSolve() {
       <div class="input-display">${session.inputStr ? esc(session.inputStr) : '<span class="placeholder">ここに数字が出ます</span>'}</div>
       <div class="keypad">${pad}<button class="key-btn util" data-action="key" data-k="clr">クリア</button></div>
       <div style="margin-top:10px"><button class="big-btn" data-action="confirm">こたえあわせ</button></div>
+      <button class="help-btn" data-action="help">${nv.name}に 計算を たのむ</button>
+      ${session.helpSteps[session.stepIdx] && session.helpText ? `<div class="help-bubble"><img src="${nv.hint}" alt=""><p>${nv.name}：「<b>${esc(session.helpText)}</b>」だよ</p></div>` : ''}
       ${miniMsgHTML()}</div>`;
   }
 
   return `
   <div class="session-head">
-    <span class="mode-name">${isTokkon ? 'とっくん' : esc(md.title)}</span>
+    <span class="mode-name">${isTokkon ? 'とっくん' : isShiki ? 'しきだけ れんしゅう' : esc(md.title)}</span>
     <div class="progress-wrap">
       <div class="progress-head"><span>${session.idx + 1} / ${total} 問目</span><span>${progress}%</span></div>
       <div class="progress-track"><div class="progress-value" style="width:${progress}%"></div></div>
@@ -1145,7 +1241,7 @@ function renderSolve() {
           <p class="q-hint">${nv.name}：${esc(naviComment(q))}</p>
         </div>
       </div>
-      ${figureFor(q, inFeedback ? 2 : (q.mode !== 'm5' && session.stepIdx >= session.steps.length - 2 ? 1 : 0))}
+      ${figureFor(q, revealState)}
       ${!inFeedback && step.prompt ? `<p class="step-q">${esc(step.prompt)}</p>` : ''}
     </article>
     <div class="side-panel">${side}</div>
@@ -1162,8 +1258,9 @@ function miniMsgHTML() {
 
 function renderResult() {
   const isTokkon = session.mode === 'tokkon';
-  const md = isTokkon ? null : MODES[session.mode];
-  const nv = NAVI[isTokkon ? 'saku' : md.navi];
+  const isShiki = session.mode === 'shiki';
+  const md = isTokkon || isShiki ? null : MODES[session.mode];
+  const nv = NAVI[isTokkon || isShiki ? 'saku' : md.navi];
   const total = session.list.length;
   const newBadges = earnedBadgeIds().filter((id) => !session.badgesBefore.includes(id))
     .map((id) => BADGES.find((b) => b.id === id));
@@ -1172,14 +1269,17 @@ function renderResult() {
   return `
   <section class="result-card">
     <img class="pose" src="${nv.full}" alt="${nv.name}">
-    <p class="result-score">${total}問中 ${session.correctCount}問 最初から正解</p>
+    <p class="result-score">${isShiki ? `${total}問中 ${session.correctCount}問 正解` : `${total}問中 ${session.correctCount}問 最初から正解`}</p>
     <p class="result-sub">${isTokkon
       ? `${session.clearedCount}問 克服しました。${mistakes.length ? `のこりの まちがえた問題は ${mistakes.length}問 です。` : 'まちがえた問題は 全部 克服できました！'}`
-      : session.passed
-        ? `合格！ ${required}問以上、最初から正解できました。続けて別の問題にも挑戦しよう。`
-        : `あと ${remaining}問、最初から正解できると合格だよ。まちがえた問題は「とっくん」で考え方を確かめよう。`}</p>
+      : isShiki
+        ? '「1とみる量」と式の練習ができました。まちがえた問題は、解説で矢印の向きを確かめよう。'
+        : session.passed
+          ? `合格！ ${required}問以上、最初から正解できました。続けて別の問題にも挑戦しよう。`
+          : `あと ${remaining}問、最初から正解できると合格だよ。まちがえた問題は「とっくん」で考え方を確かめよう。`}</p>
+    ${!isShiki && session.helpedCount ? `<p class="foot-note">${session.helpedCount}問は、ナビに計算をたすけてもらったので「最初から正解」には数えていません。</p>` : ''}
     ${newBadges.length ? `<div class="new-badges">${newBadges.map((b) => `<span class="badge-chip">🏅 ${esc(b.label)}</span>`).join('')}</div>` : ''}
-    <p class="foot-note">次は前に出た問題をできるだけ避けて、新しい問題を中心に出題するよ。</p>
+    ${isShiki ? '' : '<p class="foot-note">次は前に出た問題をできるだけ避けて、新しい問題を中心に出題するよ。</p>'}
     <div class="result-actions">
       <button class="big-btn" data-action="again">新しい問題でもう一度</button>
       <button class="big-btn sub" data-action="home">トップへ</button>
@@ -1205,6 +1305,8 @@ function renderRecords() {
       ${rows}
     </table>
     <p class="foot-note">通算正解 ${stats.totalCorrect}問 ・ とっくんで克服した問題 ${stats.tokkonClearedTotal}件 ・ 残っている まちがえた問題 ${mistakes.length}件</p>
+    <p class="foot-note">ナビに計算をたすけてもらった問題 ${stats.totalHelped}問（考え方は自分で考えたので まちがえた問題には入れず、「最初から正解」にも数えていません）</p>
+    <p class="foot-note">しきだけ れんしゅう：${stats.shiki.sessions}回実施 ・ ${stats.shiki.answered}問中 ${stats.shiki.correct}問 正解</p>
     <h2 style="margin-top:18px">バッジ</h2>
     <div class="badge-grid">${chips}</div>
     <div class="result-actions">
@@ -1222,15 +1324,18 @@ root.addEventListener('click', (ev) => {
   if (a === 'home') { cancelAdvanceTimer(); screen = 'home'; session = null; render(true); }
   else if (a === 'sound') { settings.sound = !settings.sound; saveAll(); render(); }
   else if (a === 'start') { const m = el.dataset.mode; startSession(m, generateFresh(m)); }
+  else if (a === 'shiki') startSession('shiki', genShiki());
   else if (a === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); }
   else if (a === 'records') { screen = 'records'; render(true); }
   else if (a === 'choice') pickChoice(Number(el.dataset.i));
   else if (a === 'key') pressKey(el.dataset.k);
   else if (a === 'confirm') confirmInput();
+  else if (a === 'help') askHelp();
   else if (a === 'next') nextQuestion();
   else if (a === 'again') {
     if (!session) return;
-    if (session.mode === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); else { screen = 'home'; render(true); } }
+    if (session.mode === 'shiki') startSession('shiki', genShiki());
+    else if (session.mode === 'tokkon') { if (mistakes.length) startSession('tokkon', shuffle(mistakes.slice())); else { screen = 'home'; render(true); } }
     else startSession(session.mode, generateFresh(session.mode));
   }
 });
@@ -1241,11 +1346,11 @@ window.__wariai = {
   mistakes: () => JSON.parse(JSON.stringify(mistakes)),
   stats: () => JSON.parse(JSON.stringify(stats)),
   settings: () => JSON.parse(JSON.stringify(settings)),
-  session: () => session ? { mode: session.mode, idx: session.idx, total: session.list.length, phase: session.phase, stepIdx: session.stepIdx, advancePending: !!session.advancePending } : null,
+  session: () => session ? { mode: session.mode, idx: session.idx, total: session.list.length, phase: session.phase, stepIdx: session.stepIdx, advancePending: !!session.advancePending, helpedCount: session.helpedCount } : null,
   recent: () => JSON.parse(JSON.stringify(recentQuestions)),
   current: () => {
     if (!session) return null;
-    return { mode: session.q.mode, key: session.q.key, phase: session.phase, qWrong: session.qWrong };
+    return { mode: session.q.mode, key: session.q.key, phase: session.phase, qWrong: session.qWrong, qHelped: !!session.qHelped };
   },
   expected: () => {
     if (!session || session.phase !== 'steps') return null;

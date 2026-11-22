@@ -1,8 +1,10 @@
 'use strict';
 /* 割合ステップ（小学5年・算数）
    - 割合＝比べる量÷もとにする量 を、二重数直線とステップ式で練習する。
-   - 図の肝：もとにする量の位置に「1」を置き、そこから比べる量の位置まで
-     矢印がアニメーションで伸びる（ラベルは「×割合」）。
+   - 図の肝：もとにする量の位置に「1」を置く。矢印は双方向で、
+     比べる量を求めるときは「1」から比べる量へ伸びる（ラベル「×割合」）、
+     割合を求めるときは比べる量から「1」へ向かう（ラベル「÷もとにする量」）、
+     もとにする量を求めるときは比べる量から「1」へ戻る（ラベル「÷割合」）。
      割合が1より大きいときは、矢印が「1」を越えて伸びる。
    - 記録（間違い・成績・設定）は localStorage にだけ保存する。
    - 外部読み込みは自前基盤（ナビキャラ画像・効果音）だけ。 */
@@ -157,8 +159,9 @@ function esc(s) {
 
 // ================= 二重数直線（SVG） =================
 /* 上段＝量、下段＝割合。もとにする量の真下に「1」。
-   「1」の位置から比べる量の位置まで矢印がアニメーションで伸び、
-   ラベル「×割合」が付く。割合>1 では矢印が「1」を越えて伸びる。
+   矢印はアニメーションで描かれる。arrow: 'mul'（「1」から比べる量へ・×割合）|
+   'divBase'（比べる量から「1」へ・÷もとにする量）| 'divRate'（比べる量から「1」へ・÷割合）。
+   割合>1 では矢印が「1」を越えて伸びる。
    hide: 'rate' | 'comp' | 'base' | null（解いている間、答えを隠す） */
 function numLineSVG(o) {
   const compact = !!o.compact;
@@ -171,19 +174,22 @@ function numLineSVG(o) {
   const scaleMax = ratio > 1 ? ratio * 1.14 + 0.06 : 1.2;
   const X = (f) => L + (f / scaleMax) * span;
   const x0 = X(0), x1 = X(1), xr = X(ratio);
-  const dir = ratio >= 1 ? 1 : -1;
   const midY = (topY + botY) / 2;
-  const ax1 = x1, ax2 = xr;
-  const mx = (ax1 + ax2) / 2;
-  const headPts = dir > 0
-    ? `${ax2},${midY} ${ax2 - 11},${midY - 6} ${ax2 - 11},${midY + 6}`
-    : `${ax2},${midY} ${ax2 + 11},${midY - 6} ${ax2 + 11},${midY + 6}`;
+  // 矢印は双方向。mul:「1」から比べる量へ。divBase / divRate: 比べる量から「1」へ。
+  const arrowKind = o.arrow || 'mul';
+  const aStart = arrowKind === 'mul' ? x1 : xr;
+  const aEnd = arrowKind === 'mul' ? xr : x1;
+  const mx = (aStart + aEnd) / 2;
+  const hdir = aEnd >= aStart ? 1 : -1;
+  const headPts = `${aEnd},${midY} ${aEnd - hdir * 11},${midY - 6} ${aEnd - hdir * 11},${midY + 6}`;
   const suppressRelation = !!o.suppressRelation;
   const rateBottom = o.hide === 'rate' ? '？' : decText(o.P);
   const compTop = o.hide === 'comp' ? '？' : (o.comp + o.unit);
   const baseTop = o.hide === 'base' ? '？' : (o.base + o.unit);
-  const arrowLabel = o.hide === 'rate' ? '×？' : '×' + decText(o.P);
-  const labelW = arrowLabel.length * 10 + 14;
+  const arrowLabel = arrowKind === 'divBase' ? '÷もとにする量'
+    : arrowKind === 'divRate' ? (o.hide === 'rate' ? '÷？' : '÷' + decText(o.P))
+    : (o.hide === 'rate' ? '×？' : '×' + decText(o.P));
+  const labelW = [...arrowLabel].reduce((w, ch) => w + (ch.charCodeAt(0) > 0xFF ? 15.5 : 9.5), 0) + 18;
   let s = '';
   s += `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="二重数直線">`;
   // 割合1では同じ位置のガイドや目盛りを重ねない。
@@ -215,7 +221,7 @@ function numLineSVG(o) {
     s += `<text x="${xr}" y="${botY + 20}" font-size="16.5" fill="#0a6b5e" text-anchor="middle" font-weight="800">${esc(rateBottom)}</text>`;
   }
   if (!suppressRelation && !samePosition) {
-    s += `<path class="nl-arrow-path" pathLength="100" d="M ${ax1} ${midY} Q ${mx} ${midY - 16} ${ax2} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
+    s += `<path class="nl-arrow-path" pathLength="100" d="M ${aStart} ${midY} Q ${mx} ${midY - 16} ${aEnd} ${midY}" fill="none" stroke="#0e8a7a" stroke-width="4" stroke-linecap="round"/>`;
     s += `<polygon class="nl-head" points="${headPts}" fill="#0e8a7a"/>`;
     s += `<g class="nl-pop"><rect x="${mx - labelW / 2}" y="${topY + 4}" width="${labelW}" height="24" rx="12" fill="#0e8a7a"/><text x="${mx}" y="${topY + 21}" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="800">${esc(arrowLabel)}</text></g>`;
   }
@@ -288,51 +294,61 @@ const M23_PS = [20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100, 120, 150];
 const M23_SCENES = [
   {
     unit: '人',
+    baseName: '去年の来場者', compName: '今年の来場者',
     m2: (b, r) => '去年のお祭りの来場者は ' + b + '人でした。今年は去年の ' + r + ' です。今年の来場者は何人ですか。',
     m3: (c, r) => '今年のお祭りの来場者は ' + c + '人で、去年の来場者数の ' + r + ' です。去年は何人でしたか。'
   },
   {
     unit: 'kg',
+    baseName: '去年の収穫量', compName: '今年の収穫量',
     m2: (b, r) => '去年の米の収穫量は ' + b + 'kgでした。今年は去年の ' + r + ' です。今年の収穫量は何kgですか。',
     m3: (c, r) => '今年の米の収穫量は ' + c + 'kgで、去年の収穫量の ' + r + ' です。去年は何kgでしたか。'
   },
   {
     unit: 'こ',
+    baseName: '工作の目標', compName: 'できた数',
     m2: (b, r) => '工作の目標は ' + b + 'こです。できた数は目標の ' + r + ' でした。できた数は何こですか。',
     m3: (c, r) => '工作で ' + c + 'こできました。これは目標の ' + r + ' です。目標は何こでしたか。'
   },
   {
     unit: '万円',
+    baseName: '先月の売上', compName: '今月の売上',
     m2: (b, r) => '先月の売上は ' + b + '万円でした。今月は先月の ' + r + ' です。今月の売上は何万円ですか。',
     m3: (c, r) => '今月の売上は ' + c + '万円で、先月の売上の ' + r + ' です。先月は何万円でしたか。'
   },
   {
     unit: 'ページ',
+    baseName: '先月に読んだページ数', compName: '今月に読んだページ数',
     m2: (b, r) => '先月に読んだページ数は ' + b + 'ページでした。今月は先月の ' + r + ' です。今月は何ページ読みましたか。',
     m3: (c, r) => '今月に読んだページ数は ' + c + 'ページで、先月の ' + r + ' です。先月は何ページ読みましたか。'
   },
   {
     unit: 'm',
+    baseName: '道のり全体', compName: '進んだ道のり',
     m2: (b, r) => '道のりは全部で ' + b + 'mです。進んだ道のりは全体の ' + r + ' です。進んだ道のりは何mですか。',
     m3: (c, r) => '進んだ道のりは ' + c + 'mで、道のり全体の ' + r + ' です。道のり全体は何mですか。'
   },
   {
     unit: 'L',
+    baseName: 'はじめに入っていた水', compName: '使った水',
     m2: (b, r) => 'タンクには水が ' + b + 'L入っています。そのうち全体の ' + r + ' にあたる量を使いました。使った水は何Lですか。',
     m3: (c, r) => '水を ' + c + 'L使いました。これはタンクにはじめに入っていた水の ' + r + ' です。はじめの水は何Lでしたか。'
   },
   {
     unit: '円',
+    baseName: 'もとのねだん', compName: 'ねびき額',
     m2: (b, r) => '品物のもとのねだんは ' + b + '円です。ねびき額はもとのねだんの ' + r + ' です。ねびき額は何円ですか。',
     m3: (c, r) => 'ねびき額は ' + c + '円で、もとのねだんの ' + r + ' です。もとのねだんは何円ですか。'
   },
   {
     unit: '人',
+    baseName: '答えた人全体', compName: '「はい」と答えた人',
     m2: (b, r) => 'アンケートに ' + b + '人が答えました。「はい」と答えた人は全体の ' + r + ' にあたります。「はい」は何人ですか。',
     m3: (c, r) => 'アンケートで「はい」と答えた人は ' + c + '人です。これは答えた人全体の ' + r + ' です。答えた人は何人ですか。'
   },
   {
     unit: 'kg',
+    baseName: '荷物全体の重さ', compName: '運んだ荷物の重さ',
     m2: (b, r) => '荷物の重さは ' + b + 'kgです。運んだ重さは全体の ' + r + ' です。運んだ荷物は何kgですか。',
     m3: (c, r) => '運んだ荷物は ' + c + 'kgで、荷物全体の ' + r + ' です。荷物全体は何kgですか。'
   }
@@ -353,7 +369,7 @@ function genM2() {
     const rep = repOf(c.P, kinds[i]);
     return {
       mode: 'm2', key: 'm2-' + c.base + '-' + c.P,
-      base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep,
+      base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep, baseName: sc.baseName, compName: sc.compName,
       text: sc.m2(c.base, rep.text)
     };
   });
@@ -369,7 +385,7 @@ function genM3() {
     const rep = repOf(c.P, kinds[i]);
     return {
       mode: 'm3', key: 'm3-' + c.comp + '-' + c.P,
-      base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep,
+      base: c.base, comp: c.comp, P: c.P, unit: sc.unit, rep, baseName: sc.baseName, compName: sc.compName,
       text: sc.m3(c.comp, rep.text)
     };
   });
@@ -426,39 +442,39 @@ function genM4() {
 }
 // ---- モード5：くらべる ----
 const M5_BANK = [
-  { id: 'juice', title: '砂糖水の こさ', askCount: '砂糖の重さが大きいのはどちらですか。', ask: '砂糖の割合が 大きいのは どちらですか。', aLabel: 'Aの砂糖水', bLabel: 'Bの砂糖水',
+  { id: 'juice', title: '砂糖水の こさ', askCount: '砂糖の重さが大きいのはどちらですか。', ask: '砂糖の割合が 大きいのは どちらですか。', baseName: '砂糖水全体の重さ', compName: '砂糖の重さ', aLabel: 'Aの砂糖水', bLabel: 'Bの砂糖水',
     A: { base: 200, comp: 40, unit: 'g', text: '水160gに さとう40g（全体200g）' }, B: { base: 250, comp: 75, unit: 'g', text: '水175gに さとう75g（全体250g）' }, bigger: 'B' },
-  { id: 'shoot', title: 'シュートの 成功率', askCount: '成功した本数が多いのはどちらですか。', ask: '成功率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'shoot', title: 'シュートの 成功率', askCount: '成功した本数が多いのはどちらですか。', ask: '成功率が 高いのは どちらですか。', baseName: '投げた本数', compName: '成功した本数', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 20, comp: 12, unit: '本', text: '20本のうち 12本成功' }, B: { base: 25, comp: 10, unit: '本', text: '25本のうち 10本成功' }, bigger: 'A' },
-  { id: 'discount', title: '割引率', askCount: '割引金額が大きいのはどちらですか。', ask: '割引率が 高いのは どちらですか。', aLabel: 'Aの店', bLabel: 'Bの店',
+  { id: 'discount', title: '割引率', askCount: '割引金額が大きいのはどちらですか。', ask: '割引率が 高いのは どちらですか。', baseName: 'もとのねだん', compName: '割引金額', aLabel: 'Aの店', bLabel: 'Bの店',
     A: { base: 1000, comp: 200, unit: '円', text: '1000円の品物が 200円引き' }, B: { base: 800, comp: 240, unit: '円', text: '800円の品物が 240円引き' }, bigger: 'B' },
-  { id: 'book', title: '本の 読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が 大きいのは どちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
+  { id: 'book', title: '本の 読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が 大きいのは どちらですか。', baseName: '本全体のページ数', compName: '読んだページ数', aLabel: 'Aの本', bLabel: 'Bの本',
     A: { base: 150, comp: 90, unit: 'ページ', text: '150ページのうち 90ページ読んだ' }, B: { base: 200, comp: 100, unit: 'ページ', text: '200ページのうち 100ページ読んだ' }, bigger: 'A' },
-  { id: 'kuji', title: 'くじの あたり率', askCount: '当たりくじの本数が多いのはどちらですか。', ask: 'あたり率が 高いのは どちらですか。', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
+  { id: 'kuji', title: 'くじの あたり率', askCount: '当たりくじの本数が多いのはどちらですか。', ask: 'あたり率が 高いのは どちらですか。', baseName: 'くじ全体の本数', compName: '当たりくじの本数', aLabel: 'Aのくじ', bLabel: 'Bのくじ',
     A: { base: 40, comp: 8, unit: '本', text: '40本のうち あたり8本' }, B: { base: 30, comp: 9, unit: '本', text: '30本のうち あたり9本' }, bigger: 'B' },
-  { id: 'test', title: 'テストの 取れた割合', askCount: '取れた点数が多いのはどちらですか。', ask: '取れた割合が 大きいのは どちらですか。', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
+  { id: 'test', title: 'テストの 取れた割合', askCount: '取れた点数が多いのはどちらですか。', ask: '取れた割合が 大きいのは どちらですか。', baseName: 'テストの満点', compName: '取れた点数', aLabel: 'Aのテスト', bLabel: 'Bのテスト',
     A: { base: 50, comp: 40, unit: '点', text: '50点満点で 40点' }, B: { base: 40, comp: 28, unit: '点', text: '40点満点で 28点' }, bigger: 'A' },
-  { id: 'attendance', title: '参加した割合', askCount: '参加した人数が多いのはどちらですか。', ask: '参加した割合が 大きいのは どちらですか。', aLabel: 'Aの学年', bLabel: 'Bの学年',
+  { id: 'attendance', title: '参加した割合', askCount: '参加した人数が多いのはどちらですか。', ask: '参加した割合が 大きいのは どちらですか。', baseName: '学年全体の人数', compName: '参加した人数', aLabel: 'Aの学年', bLabel: 'Bの学年',
     A: { base: 40, comp: 30, unit: '人', text: '40人のうち 30人が参加' }, B: { base: 30, comp: 24, unit: '人', text: '30人のうち 24人が参加' }, bigger: 'B' },
-  { id: 'target', title: '目標の達成率', askCount: '作れた数が多いのはどちらですか。', ask: '目標に対する達成率が 高いのは どちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'target', title: '目標の達成率', askCount: '作れた数が多いのはどちらですか。', ask: '目標に対する達成率が 高いのは どちらですか。', baseName: '目標の数', compName: '作れた数', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 40, comp: 36, unit: 'こ', text: '目標40こに対して 36こできた' }, B: { base: 50, comp: 40, unit: 'こ', text: '目標50こに対して 40こできた' }, bigger: 'A' },
-  { id: 'sales', title: '売上ののび', askCount: '今年の売上金額が大きいのはどちらですか。', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', aLabel: 'A店', bLabel: 'B店',
+  { id: 'sales', title: '売上ののび', askCount: '今年の売上金額が大きいのはどちらですか。', ask: '去年に対する今年の売上の割合が 大きいのは どちらですか。', baseName: '去年の売上', compName: '今年の売上', aLabel: 'A店', bLabel: 'B店',
     A: { base: 200, comp: 260, unit: '万円', text: '去年200万円、今年260万円' }, B: { base: 150, comp: 180, unit: '万円', text: '去年150万円、今年180万円' }, bigger: 'A' },
-  { id: 'distance', title: '進んだ道のり', askCount: '進んだ道のりが長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'distance', title: '進んだ道のり', askCount: '進んだ道のりが長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', baseName: '道のり全体の長さ', compName: '進んだ道のり', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 500, comp: 400, unit: 'm', text: '500mの道のりのうち 400m進んだ' }, B: { base: 1000, comp: 600, unit: 'm', text: '1000mの道のりのうち 600m進んだ' }, bigger: 'A' },
-  { id: 'survey', title: 'アンケート', askCount: '「はい」と答えた人数が多いのはどちらですか。', ask: '「はい」と答えた割合が大きいのはどちらですか。', aLabel: 'Aグループ', bLabel: 'Bグループ',
+  { id: 'survey', title: 'アンケート', askCount: '「はい」と答えた人数が多いのはどちらですか。', ask: '「はい」と答えた割合が大きいのはどちらですか。', baseName: '答えた人全体の人数', compName: '「はい」と答えた人数', aLabel: 'Aグループ', bLabel: 'Bグループ',
     A: { base: 40, comp: 28, unit: '人', text: '40人のうち 28人が「はい」' }, B: { base: 60, comp: 36, unit: '人', text: '60人のうち 36人が「はい」' }, bigger: 'A' },
-  { id: 'plants', title: '発芽した種', askCount: '芽が出た種が多いのはどちらですか。', ask: '芽が出た割合が大きいのはどちらですか。', aLabel: 'Aの箱', bLabel: 'Bの箱',
+  { id: 'plants', title: '発芽した種', askCount: '芽が出た種が多いのはどちらですか。', ask: '芽が出た割合が大きいのはどちらですか。', baseName: '種全体の数', compName: '芽が出た種の数', aLabel: 'Aの箱', bLabel: 'Bの箱',
     A: { base: 80, comp: 40, unit: 'こ', text: '80このうち 40こに芽が出た' }, B: { base: 50, comp: 35, unit: 'こ', text: '50このうち 35こに芽が出た' }, bigger: 'B' },
-  { id: 'classvote', title: '学級の投票', askCount: '賛成した人数が多いのはどちらですか。', ask: '賛成した割合が大きいのはどちらですか。', aLabel: 'Aクラス', bLabel: 'Bクラス',
+  { id: 'classvote', title: '学級の投票', askCount: '賛成した人数が多いのはどちらですか。', ask: '賛成した割合が大きいのはどちらですか。', baseName: 'クラス全体の人数', compName: '賛成した人数', aLabel: 'Aクラス', bLabel: 'Bクラス',
     A: { base: 30, comp: 24, unit: '人', text: '30人のうち 24人が賛成' }, B: { base: 50, comp: 35, unit: '人', text: '50人のうち 35人が賛成' }, bigger: 'A' },
-  { id: 'recycle', title: 'リサイクル', askCount: '集めたペットボトルが多いのはどちらですか。', ask: '集めた割合が大きいのはどちらですか。', aLabel: 'A地区', bLabel: 'B地区',
+  { id: 'recycle', title: 'リサイクル', askCount: '集めたペットボトルが多いのはどちらですか。', ask: '集めた割合が大きいのはどちらですか。', baseName: 'ペットボトル全体の本数', compName: '回収した本数', aLabel: 'A地区', bLabel: 'B地区',
     A: { base: 40, comp: 30, unit: '本', text: '40本のうち 30本を回収' }, B: { base: 60, comp: 36, unit: '本', text: '60本のうち 36本を回収' }, bigger: 'A' },
-  { id: 'water', title: '使った水の量', askCount: '使った水の量が多いのはどちらですか。', ask: '使った割合が大きいのはどちらですか。', aLabel: 'Aのタンク', bLabel: 'Bのタンク',
+  { id: 'water', title: '使った水の量', askCount: '使った水の量が多いのはどちらですか。', ask: '使った割合が大きいのはどちらですか。', baseName: 'タンクの水全体の量', compName: '使った水の量', aLabel: 'Aのタンク', bLabel: 'Bのタンク',
     A: { base: 200, comp: 100, unit: 'L', text: '200Lのうち 100Lを使った' }, B: { base: 150, comp: 90, unit: 'L', text: '150Lのうち 90Lを使った' }, bigger: 'B' },
-  { id: 'reading', title: '本の読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が大きいのはどちらですか。', aLabel: 'Aの本', bLabel: 'Bの本',
+  { id: 'reading', title: '本の読み進み', askCount: '読んだページ数が多いのはどちらですか。', ask: '読み進んだ割合が大きいのはどちらですか。', baseName: '本全体のページ数', compName: '読んだページ数', aLabel: 'Aの本', bLabel: 'Bの本',
     A: { base: 20, comp: 16, unit: 'ページ', text: '20ページのうち 16ページ読んだ' }, B: { base: 60, comp: 42, unit: 'ページ', text: '60ページのうち 42ページ読んだ' }, bigger: 'A' },
-  { id: 'race', title: 'マラソンの道のり', askCount: '進んだ距離が長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', aLabel: 'Aさん', bLabel: 'Bさん',
+  { id: 'race', title: 'マラソンの道のり', askCount: '進んだ距離が長いのはどちらですか。', ask: '進んだ割合が大きいのはどちらですか。', baseName: 'コース全体の長さ', compName: '進んだ距離', aLabel: 'Aさん', bLabel: 'Bさん',
     A: { base: 400, comp: 320, unit: 'm', text: '400mのコースのうち 320m進んだ' }, B: { base: 1000, comp: 600, unit: 'm', text: '1000mのコースのうち 600m進んだ' }, bigger: 'A' },
 ];
 function genM5() {
@@ -475,7 +491,7 @@ function genM5() {
     const B = Object.assign({}, it.B, { P: (it.B.comp * 100) / it.B.base });
     return {
       mode: 'm5', key: 'm5-' + it.id, id: it.id, title: it.title,
-      askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel,
+      askCount: it.askCount, ask: it.ask, aLabel: it.aLabel, bLabel: it.bLabel, baseName: it.baseName, compName: it.compName,
       A, B, bigger: A.P > B.P ? 'A' : 'B',
       countBigger: A.comp > B.comp ? 'A' : 'B'
     };
@@ -522,12 +538,29 @@ function choiceStep(prompt, pairs, hint) {
 function inputStep(prompt, expectedH, expectedText, hint) {
   return { type: 'input', prompt, hint: hint || '', expectedH, expectedText };
 }
+// 入口ステップ：「1とみる量（もとにする量）」を自分で選ぶ。
+// 間違えたら、その場で理由のヒントを見て選び直せる（考えるためのステップ）。
+function baseChoiceStep(q, opts) {
+  const o = opts || {};
+  const bLabel = o.nums ? `${q.baseName}（${q.base}${q.unit}）` : q.baseName;
+  const cLabel = o.nums ? `${q.compName}（${q.comp}${q.unit}）` : q.compName;
+  return choiceStep(o.prompt || 'まず、「1とみる量（もとにする量）」は、どちらかな？',
+    [[bLabel, true], [cLabel, false]],
+    o.hint || `「${q.compName}」は、「${q.baseName}」を基準にして考える量だよ。1とみるのは、基準になる「${q.baseName}」の方だね。`);
+}
+function baseChoiceStepM5(q, sideKey) {
+  const side = q[sideKey];
+  const lbl = sideKey === 'A' ? q.aLabel : q.bLabel;
+  return choiceStep(`${lbl} の割合を考えるとき、「1とみる量」はどちらかな？`,
+    [[`${q.baseName}（${side.base}${side.unit}）`, true], [`${q.compName}（${side.comp}${side.unit}）`, false]],
+    `「${q.compName}」は、「${q.baseName}」の中でどれだけの割合かを考える量だよ。1とみるのは「${q.baseName}」の方だね。`);
+}
 function buildSteps(q) {
   if (q.mode === 'm1') {
     return [
-      choiceStep('まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
-        [[`${q.baseName}（${q.base}${q.unit}）`, true], [`${q.compName}（${q.comp}${q.unit}）`, false]],
-        '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。'),
+      baseChoiceStep(q, { nums: true,
+        prompt: 'まず、はじめに決めるのは「もとにする量」。1とみるのは、どちらかな？',
+        hint: '問題文で「何と比べているか」を示す量が、もとにする量だよ。基準を探そう。' }),
       choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
         [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
         '下の数直線の「1」を基準に、比べる量の印の位置を予想しよう。'),
@@ -541,6 +574,7 @@ function buildSteps(q) {
   if (q.mode === 'm2') {
     const d = decText(q.P);
     return [
+      ...(q.baseName ? [baseChoiceStep(q)] : []),
       choiceStep('比べる量の印は、数直線の「1」の印と比べてどこにくるかな？',
         [['左側（0と1の間）', q.P < 100], ['同じ位置', q.P === 100], ['右側（1より大きい）', q.P > 100]],
         '割合が1より小さいなら左側、1より大きいなら右側。図の「1」を基準にしよう。'),
@@ -554,6 +588,7 @@ function buildSteps(q) {
   if (q.mode === 'm3') {
     const d = decText(q.P);
     return [
+      ...(q.baseName ? [baseChoiceStep(q)] : []),
       choiceStep('もとにする量の印は、比べる量の印と比べてどこにくるかな？',
         [['左側', q.P > 100], ['同じ位置', q.P === 100], ['右側', q.P < 100]],
         'もとにする量は「1」の位置。比べる量の印と、左右の位置関係を考えよう。'),
@@ -593,7 +628,9 @@ function buildSteps(q) {
     const valueStep = inputStep(prompt, q.target === 'rate' ? q.P : answer * 100,
       q.target === 'rate' ? decText(q.P) : String(answer),
       '入力した答えを、もとの場面に戻して確かめよう。');
-    return [targetStep, relationStep, formulaStep, valueStep];
+    const steps = q.baseName ? [baseChoiceStep(q)] : [];
+    steps.push(targetStep, relationStep, formulaStep, valueStep);
+    return steps;
   }
   // m5
   const rawCompare = choiceStep(q.askCount,
@@ -610,7 +647,12 @@ function buildSteps(q) {
   const cmp = choiceStep(q.ask,
     [[q.aLabel, q.bigger === 'A'], [q.bLabel, q.bigger === 'B']],
     '同じ1を基準にそろえて、割合を比べよう。量そのものの大きさだけで決めないことがポイントだよ。');
-  return [rawCompare, fA, iA, fB, iB, cmp];
+  const steps = [rawCompare];
+  if (q.baseName) steps.push(baseChoiceStepM5(q, 'A'));
+  steps.push(fA, iA);
+  if (q.baseName) steps.push(baseChoiceStepM5(q, 'B'));
+  steps.push(fB, iB, cmp);
+  return steps;
 }
 
 // ================= バッジ =================
@@ -669,7 +711,7 @@ function startSession(mode, list) {
       const B = Object.assign({}, current.B, { P: (current.B.comp * 100) / current.B.base });
       return Object.assign({}, q, {
         title: current.title, askCount: current.askCount, ask: current.ask,
-        aLabel: current.aLabel, bLabel: current.bLabel, A, B,
+        aLabel: current.aLabel, bLabel: current.bLabel, baseName: current.baseName, compName: current.compName, A, B,
         bigger: current.bigger,
         countBigger: current.A.comp > current.B.comp ? 'A' : 'B'
       });
@@ -825,20 +867,27 @@ function nextQuestion() {
 }
 
 // ================= 図と解説 =================
+// モード（m6は求める量）ごとに、主役の矢印の向きを決める。
+function arrowFor(q) {
+  if (q.mode === 'm1') return 'divBase';
+  if (q.mode === 'm3') return 'divRate';
+  if (q.mode === 'm6') return q.target === 'rate' ? 'divBase' : q.target === 'base' ? 'divRate' : 'mul';
+  return 'mul';
+}
 function figureFor(q, revealState) {
   if (q.mode === 'm4') return '';
   if (q.mode === 'm5') {
-    const aDone = revealState === 2 || session.stepIdx >= 3;
-    const bDone = revealState === 2 || session.stepIdx >= 5;
+    const aDone = revealState === 2 || session.stepIdx >= (q.baseName ? 4 : 3);
+    const bDone = revealState === 2 || session.stepIdx >= (q.baseName ? 7 : 5);
     return `<div class="fig-box fig-box-m5"><div class="fig-cap">${esc(q.aLabel)}</div>` +
-      numLineSVG({ base: q.A.base, comp: q.A.comp, P: q.A.P, unit: q.A.unit, hide: aDone ? null : 'rate', suppressRelation: !aDone, compact: true }) +
+      numLineSVG({ base: q.A.base, comp: q.A.comp, P: q.A.P, unit: q.A.unit, hide: aDone ? null : 'rate', suppressRelation: !aDone, compact: true, arrow: 'divBase' }) +
       `<div class="fig-cap">${esc(q.bLabel)}</div>` +
-      numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', suppressRelation: !bDone, compact: true }) +
+      numLineSVG({ base: q.B.base, comp: q.B.comp, P: q.B.P, unit: q.B.unit, hide: bDone ? null : 'rate', suppressRelation: !bDone, compact: true, arrow: 'divBase' }) +
       '</div>';
   }
   const hide = revealState === 2 ? null : (q.mode === 'm1' ? 'rate' : q.mode === 'm2' ? 'comp' : q.mode === 'm6' ? (q.target === 'rate' ? 'rate' : q.target === 'comp' ? 'comp' : 'base') : 'base');
   const suppressRelation = revealState === 0;
-  return `<div class="fig-box">` + numLineSVG({ base: q.base, comp: q.comp, P: q.P, unit: q.unit, hide, suppressRelation }) + '</div>';
+  return `<div class="fig-box">` + numLineSVG({ base: q.base, comp: q.comp, P: q.P, unit: q.unit, hide, suppressRelation, arrow: arrowFor(q) }) + '</div>';
 }
 function questionText(q) {
   if (q.mode === 'm4') return q.prompt;
@@ -956,7 +1005,7 @@ function renderHome() {
     <img class="hero-img" src="${GROUP_IMG}" alt="ナビキャラたち">
     <div class="hero-text">
       <h1>割合を、図で見て<br>ステップで解こう</h1>
-      <p>もとにする量を「1」とみて、矢印を引っ張ってかける。それが割合の考え方です。二重数直線で確かめながら進もう。</p>
+      <p>もとにする量を「1」とみるのが、割合の考え方です。1へもどす矢印は わり算、1から引っ張る矢印は かけ算。二重数直線で確かめながら進もう。</p>
       <div class="hero-tags"><span>割合</span><span>百分率（％）</span><span>歩合</span><span>二重数直線</span></div>
     </div>
   </section>
@@ -966,11 +1015,11 @@ function renderHome() {
       <h2>まず「もとにする量」を1とみよう</h2>
       <p>上の数直線は「量」、下の数直線は「割合」。もとにする量の真下が「1」だよ。</p>
       <p class="guide-rule">割合 ＝ 比べる量 ÷ もとにする量</p>
-      <p class="guide-note">1より小さい割合も、1より大きい割合もあるよ。矢印の「×割合」に注目しよう。</p>
+      <p class="guide-note">1より小さい割合も、1より大きい割合もあるよ。割合を出すときは「÷もとにする量」、比べる量を出すときは「×割合」の矢印に注目しよう。</p>
     </div>
     <div class="guide-example">
       <p class="guide-example-title">例：100人のうち40人</p>
-      ${numLineSVG({ base: 100, comp: 40, P: 40, unit: '人', compact: true })}
+      ${numLineSVG({ base: 100, comp: 40, P: 40, unit: '人', compact: true, arrow: 'divBase' })}
       <p class="guide-equation">40 ÷ 100 ＝ 0.4</p>
       <p class="guide-note">100人を1とみると、40人は0.4にあたるね。</p>
     </div>
@@ -1047,7 +1096,7 @@ function renderSolve() {
           <p class="q-hint">${nv.name}：${esc(naviComment(q))}</p>
         </div>
       </div>
-      ${figureFor(q, inFeedback ? 2 : ((q.mode === 'm1' && session.stepIdx >= 2) || ((q.mode === 'm2' || q.mode === 'm3') && session.stepIdx >= 1) || (q.mode === 'm6' && session.stepIdx >= 2) ? 1 : 0))}
+      ${figureFor(q, inFeedback ? 2 : (q.mode !== 'm5' && session.stepIdx >= session.steps.length - 2 ? 1 : 0))}
       ${!inFeedback && step.prompt ? `<p class="step-q">${esc(step.prompt)}</p>` : ''}
     </article>
     <div class="side-panel">${side}</div>

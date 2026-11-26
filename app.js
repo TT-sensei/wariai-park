@@ -1095,6 +1095,28 @@ function explainFor(q) {
   };
 }
 
+// 答えのあとに、その数を「場面の言葉」へもどして確かめる一文（m1・m2・m3・m5のみ）。
+// 式の確認（explainFor）とは別に、場面の言葉・実際の数・矢印の向きと結びつけて短く示す。
+function sceneCheckFor(q) {
+  if (q.mode === 'm1') {
+    const d = decText(q.P);
+    return `「${q.compName}」の ${q.comp}${q.unit} は、「${q.baseName}」の ${q.base}${q.unit} を1とみたときの ${d} だね。矢印が「1」へ向かう わり算で出た数だよ。`;
+  }
+  if (q.mode === 'm2') {
+    const d = decText(q.P);
+    return `「${q.compName}」の ${q.comp}${q.unit} は、「${q.baseName}」の ${q.base}${q.unit} の ${d}倍だね。矢印が「1」から伸びる かけ算で出た数だよ。`;
+  }
+  if (q.mode === 'm3') {
+    const d = decText(q.P);
+    return `「${q.baseName}」の ${q.base}${q.unit} が、「1」にあたる量だね。「${q.compName}」の ${q.comp}${q.unit} は、その ${d}倍のところにあったよ。矢印を「1」へ戻す わり算で出た数だよ。`;
+  }
+  if (q.mode === 'm5') {
+    const winner = q.bigger === 'A' ? q.aLabel : q.bLabel;
+    return `${q.aLabel} は「${q.baseName}」の ${q.A.base}${q.A.unit} を1とみて ${decText(q.A.P)}、${q.bLabel} は ${q.B.base}${q.B.unit} を1とみて ${decText(q.B.P)}。1にそろえて比べたから、割合が大きいのは ${winner} だね。`;
+  }
+  return null;
+}
+
 // ================= 画面 =================
 const root = document.getElementById('app');
 function headerHTML() {
@@ -1195,6 +1217,7 @@ function renderSolve() {
   let side = '';
   if (inFeedback) {
     const ex = explainFor(q);
+    const sceneCheck = session.mode !== 'shiki' ? sceneCheckFor(q) : null;
     const ok = !session.qWrong;
     side = `<div class="panel-card">
       <div class="feedback ${ok ? 'ok' : 'ng'}" style="margin-top:0">
@@ -1203,6 +1226,7 @@ function renderSolve() {
       </div>
       ${session.qHelped ? `<div class="check-line">この問題は ${nv.name} に計算をたすけてもらったよ。式は自分で考えられたね。</div>` : ''}
       ${ex.check ? `<div class="check-line">${esc(ex.check)}</div>` : ''}
+      ${sceneCheck ? `<div class="scene-check"><strong>場面の言葉でもどすと</strong><p>${esc(sceneCheck)}</p></div>` : ''}
       ${ex.concept ? `<div class="concept-note"><strong>考え方をふり返ろう</strong><p>${esc(ex.concept)}</p></div>` : ''}
       <div style="margin-top:12px"><button class="big-btn" data-action="next">${session.idx + 1 >= total ? '結果を見る' : 'つぎへ →'}</button></div>
     </div>`;
